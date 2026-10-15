@@ -94,7 +94,7 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--desert free\|edge\|inner\|center\|ring` | where the desert may be: anywhere (default), the 12 tiles on the coast, the 7 that do not touch the sea, the middle tile, or the 6 around it |
 | `--allow-adjacent-red` | allow a 6 or 8 next to another 6 or 8 |
 
-`--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch is accepted, with a warning on stderr.
+`-h` or `--help` lists all the options. `--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch is accepted, with a warning on stderr.
 
 ### The drawing
 
