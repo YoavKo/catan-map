@@ -6,8 +6,19 @@
 """
 from __future__ import annotations
 
-import argparse
 import sys
+
+if __name__ == "__main__" and not __package__:
+    # Started as a file (`python catan_map/cli.py`, `uv run catan_map/cli.py`): the relative
+    # imports below need the package, so make it importable and run it as the package instead.
+    import os
+    import runpy
+
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    runpy.run_module("catan_map", run_name="__main__", alter_sys=True)
+    raise SystemExit
+
+import argparse  # noqa: E402
 
 from .board import DESERT_ZONES
 from .codec import CatanMapError, parse, serialize

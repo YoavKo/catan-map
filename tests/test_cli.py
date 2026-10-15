@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -187,6 +188,35 @@ class AsAProgram(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertTrue(done.stdout.isascii())
         self.assertIn("3\\", done.stdout)
+
+    def run_file(self, *args, cwd):
+        """Python started on a file or folder, with the package NOT on the path (so only the
+        file's own location can make the imports work)."""
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        return subprocess.run([sys.executable, *args], capture_output=True, text=True, cwd=cwd, env=env)
+
+    def test_it_runs_when_started_as_a_file_or_a_folder(self):
+        expected = "seed:   KMQXRT\nstring: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n"
+        elsewhere = tempfile.gettempdir()
+        starts = [
+            (["catan_map/cli.py"], ROOT),                                    # python catan_map/cli.py
+            ([str(ROOT / "catan_map" / "cli.py")], elsewhere),               # the same, from another folder
+            ([str(ROOT / "catan_map" / "__main__.py")], elsewhere),
+            ([str(ROOT / "catan_map")], elsewhere),                          # python path/to/catan_map
+        ]
+        for command, cwd in starts:
+            done = self.run_file(*command, "--seed", "KMQXRT", cwd=cwd)
+            self.assertEqual((done.returncode, done.stdout, done.stderr), (0, expected, ""), command)
+
+    def test_started_as_a_file_help_and_errors_still_work(self):
+        done = self.run_file("catan_map/cli.py", "-h", cwd=ROOT)
+        self.assertEqual(done.returncode, 0)
+        self.assertIn("--seed", done.stdout)
+        done = self.run_file("catan_map/cli.py", "--seed", "KM2XRT", cwd=ROOT)
+        self.assertEqual((done.returncode, done.stdout), (2, ""))
+        self.assertIn("error:", done.stderr)
+        done = self.run_file("catan_map/cli.py", "--string", "WSG", cwd=ROOT)
+        self.assertEqual(done.returncode, 2)
 
     def test_help_mentions_the_options(self):
         done = self.call("--help")

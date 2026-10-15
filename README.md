@@ -20,7 +20,7 @@ python -m catan_map --string "WSGOCW..."     # read a string instead of using a 
 python -m unittest                           # run the tests
 ```
 
-After `pip install -e .` there is also a `catan-map` command, and the package can be imported (see [From Python](#from-python)).
+All of these start the same program: `python -m catan_map`, `python catan_map/cli.py` (or `uv run catan_map/cli.py`), `uv run catan-map`, and, after `pip install -e .`, the `catan-map` command. The package can also be imported (see [From Python](#from-python)).
 
 ## The board
 
