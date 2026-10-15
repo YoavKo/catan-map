@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "catan-map"
+version = "1.0.0"
+description = "A Settlers of Catan map generator: a seed gives a board, a board is a short string."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+catan-map = "catan_map.cli:main"
+
+[tool.setuptools]
+packages = ["catan_map"]
