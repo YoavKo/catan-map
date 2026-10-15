@@ -110,17 +110,6 @@ S→    W4    C5    O6    G9    C9    ~
    ~     G6    Oc    S4    S3    ←3
       O→    O3    Sb    W8    ~
          ~     ↖3    ~     ↖3
-
-ports (shifted by one, the top-left sea tile is empty):
-port 1 (ring  1, backward): 2:1 clay  -> tile  0 (row 1, col 1)
-port 2 (ring  3, corner  ): 2:1 grain -> tile  2 (row 1, col 3)
-port 3 (ring  5, forward ): 2:1 wood  -> tile 11 (row 3, col 5)
-port 4 (ring  7, forward ): 3:1       -> tile 15 (row 4, col 4)
-port 5 (ring  9, corner  ): 3:1       -> tile 18 (row 5, col 3)
-port 6 (ring 11, forward ): 3:1       -> tile 16 (row 5, col 1)
-port 7 (ring 13, backward): 2:1 ore   -> tile 16 (row 5, col 1)
-port 8 (ring 15, corner  ): 2:1 sheep -> tile  7 (row 3, col 1)
-port 9 (ring 17, backward): 3:1       -> tile  3 (row 2, col 1)
 ```
 
 `3` is a 3:1 port and a letter a 2:1 port; the arrow is on the side of the port that faces the island tile it attaches to; `~` is water. `--ascii` uses `/ \ < >` instead of the arrows.

@@ -37,41 +37,30 @@ C→    G9    D     O2    Wc    C5    ~
       3→    Wa    S4    G8    ~
          ~     ↖3    ~     ↖S"""
 
-LEGEND = """\
-port 1 (ring  0, corner  ): 3:1       -> tile  0 (row 1, col 1)
-port 2 (ring  2, backward): 2:1 grain -> tile  1 (row 1, col 2)
-port 3 (ring  4, forward ): 2:1 ore   -> tile  6 (row 2, col 4)
-port 4 (ring  6, corner  ): 3:1       -> tile 11 (row 3, col 5)
-port 5 (ring  8, backward): 2:1 sheep -> tile 15 (row 4, col 4)
-port 6 (ring 10, forward ): 3:1       -> tile 17 (row 5, col 2)
-port 7 (ring 12, corner  ): 3:1       -> tile 16 (row 5, col 1)
-port 8 (ring 14, backward): 2:1 clay  -> tile 12 (row 4, col 1)
-port 9 (ring 16, forward ): 2:1 wood  -> tile  3 (row 2, col 1)"""
-
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class Drawings(unittest.TestCase):
     def test_unicode_with_the_default_ports(self):
-        expected = UNICODE_DRAWING + "\n\nports (default arrangement, not in the string):\n" + LEGEND
-        self.assertEqual(render_board(BOARD), expected)
+        self.assertEqual(render_board(BOARD), UNICODE_DRAWING)
 
     def test_ascii_with_the_default_ports(self):
-        expected = ASCII_DRAWING + "\n\nports (default arrangement, not in the string):\n" + LEGEND
-        self.assertEqual(render_board(BOARD, ascii_only=True), expected)
+        self.assertEqual(render_board(BOARD, ascii_only=True), ASCII_DRAWING)
 
-    def test_a_string_that_has_the_default_ports_draws_the_same_but_says_so(self):
-        with_ports = Board(BOARD.tiles, BOARD.tokens, default_ports())
-        text = render_board(with_ports)
-        self.assertTrue(text.startswith(UNICODE_DRAWING))
-        self.assertIn("\n\nports:\n" + LEGEND, text)
+    def test_a_string_that_has_the_default_ports_draws_the_same(self):
+        self.assertEqual(render_board(Board(BOARD.tiles, BOARD.tokens, default_ports())), UNICODE_DRAWING)
 
     def test_the_shifted_ring(self):
         shifted = parse("WSGOCWSGDOWCSGOCWSG563a4b892c563b9a48X3gO3s#3cW").board
-        text = render_board(shifted)
-        self.assertTrue(text.startswith(SHIFTED_DRAWING))
-        self.assertIn("ports (shifted by one, the top-left sea tile is empty):", text)
-        self.assertIn("port 1 (ring  1, backward): 3:1", text.replace("non-corner", ""))
+        self.assertEqual(render_board(shifted), SHIFTED_DRAWING)
+
+    def test_only_the_drawing_is_printed_no_heading_and_no_port_list(self):
+        for seed in ("KMQXRT", "AAAAAA", "ZZZZZZ"):
+            for ports in (False, True):
+                text = render_board(generate(seed, ports=ports))
+                self.assertEqual(len(text.split("\n")), 7, seed)
+                self.assertNotIn("port", text)
+                self.assertNotIn("tile ", text)
 
     def test_ascii_drawings_use_only_ascii(self):
         for seed in ("KMQXRT", "AAAAAA", "ZZZZZZ"):
@@ -81,16 +70,17 @@ class Drawings(unittest.TestCase):
     def test_every_tile_and_token_is_drawn_where_it_belongs(self):
         for seed in ("KMQXRT", "AAAAAA", "ZZZZZZ", "CATAN"):
             board = generate(seed)
-            lines = render_board(board).split("\n\n")[0].split("\n")
+            lines = render_board(board).split("\n")
             for tile, (row, x) in enumerate(TILE_POSITIONS):
                 column = 3 * x + 18
                 cell = lines[row + 1][column:column + 2].ljust(2)
                 self.assertEqual(cell, board.tiles[tile] + (board.tokens[tile] or " "), (seed, tile))
 
-    def test_the_legend_lists_nine_ports(self):
+    def test_the_nine_ports_are_drawn_each_with_an_arrow(self):
         for seed in ("KMQXRT", "AAAAAA"):
             text = render_board(generate(seed, ports=True))
-            self.assertEqual(len(re.findall(r"^port \d \(ring", text, re.M)), 9)
+            sea = [t for line in text.split("\n") for t in line.split() if len(t) == 2 and ("→" in t or "←" in t or "↗" in t or "↖" in t or "↘" in t or "↙" in t)]
+            self.assertEqual(len(sea), 9)
 
 
 class Colours(unittest.TestCase):

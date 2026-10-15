@@ -147,7 +147,10 @@ class Drawing(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("string: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n\n", out)
         self.assertIn("↘", out)
-        self.assertIn("ports (default arrangement, not in the string):", out)
+        # only the drawing: no heading and no list of ports under it
+        self.assertNotIn("ports", out)
+        self.assertNotIn("-> tile", out)
+        self.assertEqual(len(out.rstrip("\n").split("\n")), 2 + 1 + 7)    # seed, string, a blank line, 7 rows
 
     def test_ascii(self):
         out = run("--seed", "KMQXRT", "--board", "--ascii")[1]
@@ -163,7 +166,8 @@ class Drawing(unittest.TestCase):
     def test_a_string_can_be_drawn_too(self):
         out = run("--string", BASE + "3gO3s#3cW", "--board")[1]
         self.assertIn("W5", out)
-        self.assertIn("\nports:\n", out)
+        self.assertNotIn("ports", out)
+        self.assertEqual(len(out.rstrip("\n").split("\n")), 1 + 1 + 7)    # string, a blank line, 7 rows
 
 
 class AsAProgram(unittest.TestCase):

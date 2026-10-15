@@ -2,20 +2,17 @@
 
 The island with its tokens, and the sea ring around it. A port shows ``3`` (3:1) or the
 resource letter (2:1), with an arrow, on the side of the port that faces the island tile it
-attaches to; ``~`` is plain water. A legend lists every port under the drawing.
+attaches to; ``~`` is plain water.
 """
 from __future__ import annotations
 
 from .board import (
-    RESOURCE_NAMES,
     RING_POSITIONS,
     RING_SIZE,
     THREE_TO_ONE,
     TILE_COUNT,
     TILE_POSITIONS,
-    TILE_ROW_COL,
     direction,
-    is_corner_slot,
     port_ring_position,
     port_target_tile,
 )
@@ -49,13 +46,12 @@ def _paint(text, key, color):
     return f"\x1b[{COLORS[key]}m{text}\x1b[0m"
 
 
-def _port_cells(board, arrows, color):
-    """[(ring position, text, colour key)] for the nine ports, and the legend lines."""
+def _port_cells(board, arrows):
+    """[(ring position, text, colour key)] for the nine ports."""
     ports = board.effective_ports()
-    cells, legend = [], []
+    cells = []
     for slot, port in enumerate(ports.entries):
         position = port_ring_position(slot, ports.shifted)
-        corner = is_corner_slot(slot, ports.shifted)
         tile = port_target_tile(slot, ports.shifted, port.forward)
         way = direction(position, tile)
         label = "3" if port.kind == THREE_TO_ONE else port.kind
@@ -63,18 +59,11 @@ def _port_cells(board, arrows, color):
         # the arrow goes on the side that faces the tile
         text = (arrow + label) if way in ("W", "NW", "SW") else (label + arrow)
         cells.append((position, text, "3" if port.kind == THREE_TO_ONE else port.kind))
-        row, col = TILE_ROW_COL[tile]
-        kind = "3:1" if port.kind == THREE_TO_ONE else f"2:1 {RESOURCE_NAMES[port.kind]}"
-        how = "corner" if corner else ("forward" if port.forward else "backward")
-        legend.append(
-            f"port {slot + 1} (ring {position:>2}, {how:<8}): {kind:<9} -> "
-            f"tile {tile:>2} (row {row + 1}, col {col + 1})"
-        )
-    return cells, legend
+    return cells
 
 
 def render_board(board, ascii_only=False, color=False):
-    """The drawing and the legend, as text (no trailing newline)."""
+    """The drawing, as text (no trailing newline)."""
     arrows = ASCII_ARROWS if ascii_only else UNICODE_ARROWS
     rows = {}   # row -> [(column, text, colour key)]
 
@@ -83,7 +72,7 @@ def render_board(board, ascii_only=False, color=False):
         token = board.tokens[tile] or " "
         rows.setdefault(row, []).append((_column(x), board.tiles[tile] + token, board.tiles[tile]))
 
-    port_cells, legend = _port_cells(board, arrows, color)
+    port_cells = _port_cells(board, arrows)
     by_position = {position: (text, key) for position, text, key in port_cells}
     for position in range(RING_SIZE):
         row, x = RING_POSITIONS[position]
@@ -101,11 +90,4 @@ def render_board(board, ascii_only=False, color=False):
             used = column + len(text)
         lines.append(line.rstrip())
 
-    ports = board.effective_ports()
-    if board.ports is None:
-        heading = "ports (default arrangement, not in the string):"
-    elif ports.shifted:
-        heading = "ports (shifted by one, the top-left sea tile is empty):"
-    else:
-        heading = "ports:"
-    return "\n".join(lines + ["", heading] + legend)
+    return "\n".join(lines)

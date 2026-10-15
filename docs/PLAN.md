@@ -226,7 +226,7 @@ With `--string`, the `seed:` line is left out, the string is shown in the chosen
 
 ## 7. The console drawing (`--board`)
 
-The island with its tokens, and the sea ring around it with each port: a letter for a 2:1 port (`G` grain, `O` ore, `S` sheep, `C` clay, `W` wood), `3` for a 3:1 port, `~` for plain water, and an **arrow on the side of the port that faces the island tile it attaches to**. A legend lists every port. Tokens: `a` = 10, `b` = 11, `c` = 12; `D` is the desert.
+The island with its tokens, and the sea ring around it with each port: a letter for a 2:1 port (`G` grain, `O` ore, `S` sheep, `C` clay, `W` wood), `3` for a 3:1 port, `~` for plain water, and an **arrow on the side of the port that faces the island tile it attaches to**. Tokens: `a` = 10, `b` = 11, `c` = 12; `D` is the desert.
 
 The board below is the example from section 3.2 with the default ports `3gO3s#3cW`. These drawings were produced by a throwaway script that also checked the ring table of section 2.3 against the tile coordinates, so the arrows are right for that table; the final output will be made by the real code.
 
@@ -252,20 +252,6 @@ The board below is the example from section 3.2 with the default ports `3gO3s#3c
    C>    S6    G3    Ob    C9    ~
       ~     Wa    S4    G8    \S
          3/    ~     \3    ~
-```
-
-**Legend** (printed under the drawing):
-
-```
-port 1 (ring  0, corner  ): 3:1       -> tile  0 (row 1, col 1)
-port 2 (ring  2, backward): 2:1 grain -> tile  1 (row 1, col 2)
-port 3 (ring  4, forward ): 2:1 ore   -> tile  6 (row 2, col 4)
-port 4 (ring  6, corner  ): 3:1       -> tile 11 (row 3, col 5)
-port 5 (ring  8, backward): 2:1 sheep -> tile 15 (row 4, col 4)
-port 6 (ring 10, forward ): 3:1       -> tile 17 (row 5, col 2)
-port 7 (ring 12, corner  ): 3:1       -> tile 16 (row 5, col 1)
-port 8 (ring 14, backward): 2:1 clay  -> tile 12 (row 4, col 1)
-port 9 (ring 16, forward ): 2:1 wood  -> tile  3 (row 2, col 1)
 ```
 
 The same ports with the **`X` shift** (the string `X3gO3s#3cW`), where the ports move to ring 1, 3, 5, … and the corners that hold ports change:
@@ -340,3 +326,4 @@ Nothing. Version 1.0.0 is built; see section 11 for how it differs from the plan
 - A string made only of separators is reported as empty.
 - Seeds are 1 to 32 letters; digits are rejected with a hint that seeds are letters only.
 - Checked on 20,000 boards: 0.05 ms per board, no 6/8 ever touches another, every string is different, the desert is spread evenly over the 19 tiles, the ring is shifted about half the time, and the token shuffle needed 7.4 tries on average (68 at most; the limit is 10,000).
+- **No legend under the drawing.** The first version printed a blank line, a `ports:` heading and a list of the nine ports (ring position, orientation, ratio and the tile each attaches to) under the board. That was removed: `--board` prints only the drawing. The arrows in the drawing still show which tile each port attaches to.
