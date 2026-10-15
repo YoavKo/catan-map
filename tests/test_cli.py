@@ -59,7 +59,7 @@ class MakingABoard(unittest.TestCase):
     def test_ports_are_added_with_the_flag_and_not_otherwise(self):
         self.assertEqual(len(run("--seed", "KMQXRT")[1].split("string: ")[1].strip()), 37)
         with_ports = run("--seed", "KMQXRT", "--ports")[1]
-        self.assertTrue(with_ports.split("string: ")[1].strip().endswith("XcgW#3#os#"))
+        self.assertTrue(with_ports.split("string: ")[1].strip().endswith("XcgW#3#os3"))
         self.assertIn("seed:   KMQXRT-P\n", with_ports)
 
     def test_the_printed_seed_is_the_full_seed_code(self):
@@ -146,9 +146,6 @@ class Drawing(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("string: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n\n", out)
         self.assertIn("↘", out)
-        # the desert of this board is tile 3, which the default ports attach to: they are moved
-        self.assertIn("ports (default arrangement, moved off the desert; not in the string):", out)
-        out = run("--seed", "AAAAAA", "--board")[1]          # the desert is on tile 7: nothing to move
         self.assertIn("ports (default arrangement, not in the string):", out)
 
     def test_ascii(self):

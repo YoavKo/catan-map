@@ -6,7 +6,6 @@ attaches to; ``~`` is plain water. A legend lists every port under the drawing.
 """
 from __future__ import annotations
 
-from .codec import default_ports
 from .board import (
     RESOURCE_NAMES,
     RING_POSITIONS,
@@ -104,10 +103,7 @@ def render_board(board, ascii_only=False, color=False):
 
     ports = board.effective_ports()
     if board.ports is None:
-        if ports == default_ports():
-            heading = "ports (default arrangement, not in the string):"
-        else:
-            heading = "ports (default arrangement, moved off the desert; not in the string):"
+        heading = "ports (default arrangement, not in the string):"
     elif ports.shifted:
         heading = "ports (shifted by one, the top-left sea tile is empty):"
     else:

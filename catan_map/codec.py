@@ -6,9 +6,7 @@ A string has up to three parts, with no spaces:
 * tokens   18 symbols from 2345689abc (a = 10, b = 11, c = 12), in the same order,
            skipping the desert;
 * ports    optional: an optional leading X (the ring is shifted by one), then 9 port
-           symbols, clockwise from the top-left of the sea ring. See board.py. A port may
-           not attach to the desert; without a ports part the default ports are used, moved
-           off the desert if they would touch it.
+           symbols, clockwise from the top-left of the sea ring. See board.py.
 
 Two layouts: "s" (sections) writes tiles, then tokens, then ports; "p" (paired) writes
 every tile followed by its token (the desert has none), then the ports. With pipes, the
@@ -36,7 +34,6 @@ from .board import (
     adjacent_red_pairs,
     describe_tile,
     is_corner_slot,
-    port_target_tile,
 )
 
 
@@ -76,11 +73,8 @@ class Board:
     ports: Optional[Ports] = None             # None: the string had no ports part (default implied)
 
     def effective_ports(self):
-        """The ports of the board: the ones it has, or, when the string had no ports part, the
-        default arrangement moved off the desert (see avoid_desert)."""
-        if self.ports is not None:
-            return self.ports
-        return avoid_desert(default_ports(), self.tiles.index(DESERT))
+        """The ports of the board: the ones it has, or the default arrangement."""
+        return self.ports if self.ports is not None else default_ports()
 
 
 @dataclass(frozen=True)
@@ -113,37 +107,6 @@ def ports_to_text(ports):
 
 def default_ports():
     return Ports(tuple(port_from_symbol(s) for s in DEFAULT_PORTS), False)
-
-
-def ports_on_desert(ports, desert):
-    """The numbers (0-8) of the ports that attach to the desert tile."""
-    return [
-        slot
-        for slot, port in enumerate(ports.entries)
-        if port_target_tile(slot, ports.shifted, port.forward) == desert
-    ]
-
-
-def avoid_desert(ports, desert):
-    """The same ports, changed as little as possible so that none attaches to the desert.
-
-    A port that is not on a corner of the ring switches to its other orientation. A port on a
-    corner cannot, so if one sits on the desert the whole ring is shifted by one (the corner
-    tiles of the two shifts never overlap, so one of them always works). Ports that do not
-    touch the desert are never changed, except by the shift."""
-    shifted = ports.shifted
-    if any(
-        is_corner_slot(slot, shifted) and port_target_tile(slot, shifted, False) == desert
-        for slot in range(len(ports.entries))
-    ):
-        shifted = not shifted
-    entries = []
-    for slot, port in enumerate(ports.entries):
-        forward = port.forward
-        if port_target_tile(slot, shifted, forward) == desert:
-            forward = not forward
-        entries.append(Port(port.kind, forward))
-    return Ports(tuple(entries), shifted)
 
 
 # -------------------------------------------------------------------------- writing
@@ -218,9 +181,8 @@ def _check_token_counts(tokens):
         raise CodecError("tokens: " + "; ".join(problems))
 
 
-def _read_ports(rest, desert):
-    """`rest` is a list of (character, position). Returns Ports, or None when empty. A port
-    that attaches to the desert tile is an error."""
+def _read_ports(rest):
+    """`rest` is a list of (character, position). Returns Ports, or None when empty."""
     if not rest:
         return None
     shifted = rest[0][0] == "X"
@@ -246,12 +208,6 @@ def _read_ports(rest, desert):
         raise CodecError(
             "ports: there must be four 3:1 ports and one 2:1 port for each of W, O, C, S, G; "
             f"found {dict(sorted(found.items()))}"
-        )
-    for slot in ports_on_desert(ports, desert):
-        char, position = symbols[slot]
-        raise CodecError(
-            f"character {position}: port {slot + 1} ({char!r}) attaches to the desert at "
-            f"{describe_tile(desert)}; a port cannot attach to the desert"
         )
     return ports
 
@@ -323,7 +279,7 @@ def parse(text):
 
     _check_tile_counts(tiles)
     _check_token_counts(tokens)
-    board = Board(tuple(tiles), tuple(tokens), _read_ports(rest, tiles.index(DESERT)))
+    board = Board(tuple(tiles), tuple(tokens), _read_ports(rest))
 
     warnings = tuple(
         f"the {tokens[i]} at {describe_tile(i)} touches the {tokens[j]} at {describe_tile(j)}"

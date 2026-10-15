@@ -63,9 +63,7 @@ The sea ring has 18 tiles, numbered 0-17 clockwise from the top-left corner. The
 
 Port symbols: `W O C S G` are 2:1 ports of that resource, `3` is a 3:1 port. A sea tile that touches two island tiles gives a port two ways to attach: **lowercase** (`w o c s g`, and `3`) attaches it to the first of the two tiles in clockwise order ("backward"), **uppercase** (`W O C S G`, and `#` for 3:1) to the second ("forward"). Ports on the six corner sea tiles have only one way to attach, so their case does not matter when reading, and they are written lowercase.
 
-**A port never attaches to the desert.** A string whose ports part has a port on the desert is an error that names the character. Ports made by the generator avoid it: a port that would attach to the desert switches to its other orientation, and if a corner port would, the whole ring is shifted by one.
-
-If the ports part is missing, the default `3gO3s#3cW` is used, moved off the desert in the same way when it would touch it (about half of all boards: the default ports attach to tiles 0, 1, 3, 6, 11, 12, 15, 16 and 17). The drawing says so when that happens, and `--ports` writes the moved ports out.
+If the ports part is missing, the default `3gO3s#3cW` is used.
 
 ## Seeds
 
@@ -96,17 +94,17 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--desert free\|edge\|inner\|center\|ring` | where the desert may be: anywhere (default), the 12 tiles on the coast, the 7 that do not touch the sea, the middle tile, or the 6 around it |
 | `--allow-adjacent-red` | allow a 6 or 8 next to another 6 or 8 |
 
-`-h` or `--help` lists all the options. `--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch is accepted, with a warning on stderr.
+`--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch is accepted, with a warning on stderr.
 
 ### The drawing
 
 ```
 $ python -m catan_map --seed KMQXRT --board --ports
 seed:   KMQXRT-P
-string: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8XcgW#3#os#
+string: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8XcgW#3#os3
 
          ~     ↙C    ~     ↙G
-      3→    C2    Ga    G5    ~
+      3↘    C2    Ga    G5    ~
    ~     D     Wb    Sa    W8    ↙W
 S→    W4    C5    O6    G9    C9    ~
    ~     G6    Oc    S4    S3    ←3
@@ -122,10 +120,10 @@ port 5 (ring  9, corner  ): 3:1       -> tile 18 (row 5, col 3)
 port 6 (ring 11, forward ): 3:1       -> tile 16 (row 5, col 1)
 port 7 (ring 13, backward): 2:1 ore   -> tile 16 (row 5, col 1)
 port 8 (ring 15, corner  ): 2:1 sheep -> tile  7 (row 3, col 1)
-port 9 (ring 17, forward ): 3:1       -> tile  0 (row 1, col 1)
+port 9 (ring 17, backward): 3:1       -> tile  3 (row 2, col 1)
 ```
 
-In this board the desert is tile 3, so the default ports were moved off it (the legend says so). `3` is a 3:1 port and a letter a 2:1 port; the arrow is on the side of the port that faces the island tile it attaches to; `~` is water. `--ascii` uses `/ \ < >` instead of the arrows.
+`3` is a 3:1 port and a letter a 2:1 port; the arrow is on the side of the port that faces the island tile it attaches to; `~` is water. `--ascii` uses `/ \ < >` instead of the arrows.
 
 Reading a string whose 6 and 8 touch (this one has the 8 moved next to the 6): it is accepted, with a warning.
 
@@ -154,7 +152,7 @@ Only `random.Random.random()` is used, with a hand-written Fisher-Yates shuffle.
 
 1. the desert's position among the tiles its option allows, then the other 18 tiles shuffled over the rest;
 2. the tokens, reshuffled until no 6 or 8 touches another (unless allowed);
-3. the ports: whether the ring is shifted, a shuffle of the nine types, then the orientation of each port that is not on a corner; finally the ports are moved off the desert if needed, which draws nothing more.
+3. the ports: whether the ring is shifted, a shuffle of the nine types, then the orientation of each port that is not on a corner.
 
 `tests/test_golden.py` holds fixed seeds with their exact strings; if one fails, the generator changed, which would break every seed anyone has shared.
 
