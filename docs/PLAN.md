@@ -71,6 +71,7 @@ Which island tiles each sea tile touches, in clockwise order:
 
 - **Corner** sea tiles (0, 3, 6, 9, 12, 15) touch one island tile, so a port there has **one** way to attach. The other 12 touch two island tiles, so a port there has **two** legal orientations.
 - A port attaches to the **edge shared with one island tile**: **backward** = the first tile in the list above (the earlier one in the clockwise scan), **forward** = the second.
+- **A port never attaches to the desert** (a rule added after the first version, see section 11).
 - **9 ports** sit on every second sea tile, with empty water between them: **4 × 3:1** and **5 × 2:1** (one per resource).
 - Without the shift, port *k* (1–9) is on ring tile `2(k−1)`: 0, 2, 4, … 16. With the **`X` shift** (the top-left sea tile stays empty), port *k* is on `2k−1`: 1, 3, … 17.
 - Corner ports are therefore #1, #4, #7 (no shift) or #2, #5, #8 (with the shift).
@@ -183,7 +184,7 @@ Order of draws (fixed and documented; the ports come last so `--ports` never cha
 
 1. **Desert position:** chosen among the allowed tiles (`--desert`), then the other 18 tiles are shuffled over the remaining positions.
 2. **Tokens:** shuffled over the non-desert tiles. If the rule is on and a 6 or 8 touches another 6 or 8, shuffle again (the same stream, at most 10,000 attempts, then an error).
-3. **Ports** (only with `--ports`): the shift (`random() < 0.5`), then a shuffle of the 9 port types, then the orientation of each non-corner port in order (`random() < 0.5` = forward). Corner ports draw nothing.
+3. **Ports** (only with `--ports`): the shift (`random() < 0.5`), then a shuffle of the 9 port types, then the orientation of each non-corner port in order (`random() < 0.5` = forward). Corner ports draw nothing. Then the ports are **moved off the desert** if needed (section 11); that draws nothing more, so the ports always take the same number of draws.
 
 `--desert`:
 - `free` (default): any of the 19 tiles.
@@ -340,3 +341,8 @@ Nothing. Version 1.0.0 is built; see section 11 for how it differs from the plan
 - A string made only of separators is reported as empty.
 - Seeds are 1 to 32 letters; digits are rejected with a hint that seeds are letters only.
 - Checked on 20,000 boards: 0.05 ms per board, no 6/8 ever touches another, every string is different, the desert is spread evenly over the 19 tiles, the ring is shifted about half the time, and the token shuffle needed 7.4 tries on average (68 at most; the limit is 10,000).
+- **Rule added after the first version: a port may not attach to the desert.**
+  - *Reading:* a string whose ports part has a port on the desert is an error that names the character and the port.
+  - *Generating:* after the random draws the ports are moved off the desert with `avoid_desert`: a port that is not on a corner and would attach to the desert switches to its other orientation; if a corner port would, the ring is shifted by one (the corner tiles of the two shifts never overlap, so one of them always works). The draws are unchanged, so tiles and tokens of a seed are not affected, and the ports part of a seed changes only where it used to touch the desert.
+  - *No ports part:* the default `3gO3s#3cW` attaches to tiles 0, 1, 3, 6, 11, 12, 15, 16 and 17, so on about half of the boards it would touch the desert. The implied ports are therefore the default moved off the desert in the same way; `--ports` writes them out, and the drawing says "moved off the desert". Otherwise nothing changes.
+  - *Tests:* `tests/test_ports_rule.py`; the fixed seeds with ports in `tests/test_golden.py` were updated (`KMQXRT` and `ZZZZZZ`). This was done before the tool was published, so no shared seed changed.

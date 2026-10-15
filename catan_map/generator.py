@@ -14,7 +14,10 @@ changes the tiles or the tokens of a seed:
    allowed, they are shuffled again (the same stream, at most MAX_ATTEMPTS times) until no
    6 or 8 touches another 6 or 8;
 3. the ports, only when asked for: whether the ring is shifted, a shuffle of the nine port
-   types, then the orientation of every port that is not on a corner.
+   types, then the orientation of every port that is not on a corner. Afterwards the ports are
+   moved off the desert if needed (a port that would attach to it switches orientation; if a
+   corner port would, the ring is shifted), which draws nothing more, so the number of draws
+   never depends on where the desert is.
 """
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ from .board import (
     adjacent_red_pairs,
     is_corner_slot,
 )
-from .codec import Board, CatanMapError, Port, Ports
+from .codec import Board, CatanMapError, Port, Ports, avoid_desert
 from .seed import SeedCode, normalize_seed
 
 ALGORITHM = "catan-map-v1"
@@ -116,5 +119,5 @@ def generate(code, desert=None, allow_adjacent_red=False, ports=False):
     stream = Stream(code.seed)
     tiles, desert_tile = _generate_tiles(stream, zone)
     tokens = _generate_tokens(stream, desert_tile, code.allow_adjacent_red)
-    board_ports = _generate_ports(stream) if code.ports else None
+    board_ports = avoid_desert(_generate_ports(stream), desert_tile) if code.ports else None
     return Board(tiles, tokens, board_ports)

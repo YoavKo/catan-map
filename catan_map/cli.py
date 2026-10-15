@@ -42,7 +42,8 @@ def build_parser():
     parser.add_argument(
         "--ports", action="store_true",
         help="include the ports part: random ports when making a board from a seed; the default "
-        "ports when reading a string that has none (a string that has ports always keeps them)",
+        "ports when reading a string that has none (a string that has ports always keeps them). "
+        "A port never attaches to the desert: the default ports are moved off it if needed",
     )
     parser.add_argument("--board", action="store_true", help="draw the board in the console")
     parser.add_argument("--color", action="store_true", help="colours in the drawing")
