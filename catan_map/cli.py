@@ -21,14 +21,11 @@ if __name__ == "__main__" and not __package__:
 import argparse  # noqa: E402
 
 from .board import DESERT_ZONES
-from .codec import CatanMapError, parse, serialize
-from .generator import generate
+from .api import FORMATS, make
+from .codec import CatanMapError
 from .render_svg import ELEMENTS, check_elements, logo_data_uri, render_svg
 from .svg_tiles import DEFAULT_TILE_SET, TILE_SET_NAMES
 from .render_text import UNICODE_ARROWS, render_board
-from .seed import SeedCode, combine, parse_seed_code, random_seed
-
-FORMATS = {"s": "s", "sections": "s", "p": "p", "paired": "p"}
 
 
 def build_parser():
@@ -139,29 +136,15 @@ def run(args):
         if given and args.svg is None:
             raise CatanMapError(f"{flag} only applies together with --svg")
     elements = _elements(args)
+    made = make(args.seed, args.string, args.desert, args.allow_adjacent_red, args.ports, fmt, pipes)
+    board = made.board
     lines = []
-    caption = []
-
-    if args.string is not None:
-        if args.desert is not None or args.allow_adjacent_red:
-            raise CatanMapError(
-                "--desert and --allow-adjacent-red only apply when a board is made from a seed, "
-                "not with --string"
-            )
-        parsed = parse(args.string)
-        board = parsed.board
-        include_ports = board.ports is not None or args.ports
-        lines.append("string: " + serialize(board, fmt, pipes, include_ports))
-        caption.append(serialize(board, fmt, pipes, include_ports))
-        for warning in parsed.warnings:
-            print(f"warning: {warning}", file=sys.stderr)
-    else:
-        code = parse_seed_code(args.seed) if args.seed is not None else SeedCode(random_seed())
-        code = combine(code, desert=args.desert, allow_adjacent_red=args.allow_adjacent_red, ports=args.ports)
-        board = generate(code)
-        lines.append(f"seed:   {code}")
-        lines.append("string: " + serialize(board, fmt, pipes, code.ports))
-        caption.extend((str(code), serialize(board, fmt, pipes, code.ports)))
+    if made.code:
+        lines.append(f"seed:   {made.code}")
+    lines.append("string: " + made.text)
+    for warning in made.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+    caption = list(made.caption)
 
     if args.board:
         ascii_only = args.ascii or not _can_print_arrows()

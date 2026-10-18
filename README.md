@@ -137,6 +137,15 @@ parse(text).board == board                               # True
 print(render_board(board, ascii_only=True))
 ```
 
+`make` does what the command line does in one call (a board from a seed, a string, or a new random seed, with the string and any warnings), and `render_svg(board, caption, tiles, elements, logo)` draws it:
+
+```python
+from catan_map import make, render_svg
+
+made = make("KMQXRT", ports=True)                   # made.board, made.code, made.text, made.warnings, made.caption
+svg = render_svg(made.board, made.caption, "realistic", elements=("costs", "seed", "str"))
+```
+
 `generate` takes a seed or a `SeedCode`; `parse_seed_code`, `format_seed_code` and `combine` handle seed codes; every error derives from `CatanMapError`.
 
 ## How the generator works

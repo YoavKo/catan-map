@@ -8,15 +8,17 @@
 
 The string format, the seed codes and the rules are described in README.md.
 """
+from .api import Made, make
 from .codec import Board, CatanMapError, CodecError, Parsed, Port, Ports, parse, serialize
 from .generator import GenerationError, generate
+from .render_svg import render_svg
 from .render_text import render_board
 from .seed import SeedCode, SeedError, combine, format_seed_code, parse_seed_code, random_seed
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
-    "Board", "CatanMapError", "CodecError", "GenerationError", "Parsed", "Port", "Ports", "SeedCode",
-    "SeedError", "combine", "format_seed_code", "generate", "parse", "parse_seed_code", "random_seed",
-    "render_board", "serialize",
+    "Board", "CatanMapError", "CodecError", "GenerationError", "Made", "Parsed", "Port", "Ports", "SeedCode",
+    "SeedError", "combine", "format_seed_code", "generate", "make", "parse", "parse_seed_code", "random_seed",
+    "render_board", "render_svg", "serialize",
 ]
