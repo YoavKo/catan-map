@@ -148,6 +148,18 @@ svg = render_svg(made.board, made.caption, "realistic", elements=("costs", "seed
 
 `generate` takes a seed or a `SeedCode`; `parse_seed_code`, `format_seed_code` and `combine` handle seed codes; every error derives from `CatanMapError`.
 
+## Printing the sheet on A4 pages
+
+`scripts/svg_to_pages.py` cuts a big SVG, such as the 60 x 60 cm sheet, into the pages of one PDF, to print on A4 and tape together. It needs Chrome, Chromium or Edge (set `CHROME` to its path if it is not found), which keeps the drawing as vectors.
+
+```bash
+python -m catan_map --seed KMQXRT-P --svg sheet.svg --elements all
+python scripts/svg_to_pages.py sheet.svg              # sheet-pages.pdf: 6 A4 pages (3 across, 2 down)
+python scripts/svg_to_pages.py sheet.svg --scale 1    # real size: 9 pages
+```
+
+Six A4 pages cannot hold 60 cm at real size (2 pages of 29.7 cm are 59.4 cm, and a printer leaves a margin around every page), so by default the sheet is shrunk to fit six pages, about 96% with 5 mm margins; `--scale 1` prints the real size on nine. The pages are cut exactly where the printable area ends: trim the margins (or fold them under) and the pages meet edge to edge. Corner marks and a "column 2, row 1" label are in the margins; `--no-marks` leaves them out. Other options: `--margin MM` (the printer's unprinted margin), `--paper A3|LETTER`, `--pages N`, `-o FILE`.
+
 ## How the generator works
 
 Only `random.Random.random()` is used, with a hand-written Fisher-Yates shuffle. Python guarantees the sequence of `random()` for a given seed, but not the algorithm of `shuffle`, so a seed gives the same board forever. The seed text is hashed (`sha256("catan-map-v1:" + SEED)`) into the generator's seed. The draws are made in a fixed order, and the ports come last, so asking for ports never changes the tiles or the tokens of a seed:
