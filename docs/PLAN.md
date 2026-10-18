@@ -128,7 +128,7 @@ Rows follow the board rows; the token rows are shorter by one where the desert i
 
 - A seed is **letters only, A–Z, case-insensitive** (`kmqxrt` = `KMQXRT`), 1 to 32 letters. Digits and any other character are rejected with a clear message. Letters only means a `0`/`O` or `1`/`I` mix-up cannot happen, a seed can be dictated over the phone, and it can never be confused with the digits of the tokens.
 - The RNG is Python's `random.Random`, seeded from the normalized seed text (uppercase): `int.from_bytes(sha256("catan-map-v1:" + SEED).digest(), "big")`. Every distinct text is a distinct seed, any length, and the `v1` prefix lets a future algorithm get its own seeds without changing old ones.
-- **A random seed** is **6 letters** by default.
+- **A random seed** is **3 different letters** by default (15,600 of them; changed from 6 letters later).
 
 How many seeds there are:
 
@@ -173,7 +173,7 @@ KMQXRT-RAP        several: the desert letter (E, I, C or R), A, P
 ```
 
 - The **string** needs no flags: it describes the board completely, so sharing the string always works.
-- `--pipes`, `--format` and `--board` only change how things are shown, so they are not in the code.
+- `--no-pipes`, `--format` and `--board` only change how things are shown, so they are not in the code.
 
 ## 5. The generator
 
@@ -204,10 +204,10 @@ python scripts/catan_map.py --string "WSGOCW...ports"   # read a string instead 
 
 | flag | meaning |
 |---|---|
-| `--seed CODE` | the seed code (section 4.1, letters only, case-insensitive); with neither `--seed` nor `--string`, a random 6-letter seed is made and shown. A code flag that disagrees with a command-line option is an error |
+| `--seed CODE` | the seed code (section 4.1, letters only, case-insensitive); with neither `--seed` nor `--string`, a random seed of 3 different letters is made and shown. A code flag that disagrees with a command-line option is an error |
 | `--string STR` | read a string (either format, with or without separators) instead of using a seed |
-| `--format s\|p` | `s` sections (default) or `p` paired; `sections` and `paired` also work |
-| `--pipes` | write rows with `\|` and parts with `,` |
+| `--format s\|p` | `s` sections or `p` paired (default); `sections` and `paired` also work |
+| `--no-pipes` | leave out the `\|` between rows and the `,` between parts (written by default; this replaced `--pipes`) |
 | `--ports` | include the ports part: random ports when making a board from a seed; the default ports when reading a string that has none (a string that has ports always keeps them) |
 | `--board` | draw the board in the console |
 | `--color` | colors in the drawing (off by default) |
@@ -302,7 +302,7 @@ catan-map/
 ## 10. Decisions and open questions
 
 **Decided**
-- The string has no spaces. `--pipes` separates rows with `|` and parts with `,`. The reader ignores both.
+- The string has no spaces. By default the rows are separated by `|` and the parts by `,` (`--no-pipes` leaves them out). The reader ignores both.
 - `--format s` and `--format p`.
 - Ports: backward/forward as in 2.3; corner ports are written lowercase/`3`.
 - No adjacent 6/8 by default, with a flag to turn it off. `--desert free` (default) / `edge` (12 tiles) / `inner` (7 tiles) / `center` (1 tile) / `ring` (6 tiles).
@@ -327,3 +327,8 @@ Nothing. Version 1.0.0 is built; see section 11 for how it differs from the plan
 - Seeds are 1 to 32 letters; digits are rejected with a hint that seeds are letters only.
 - Checked on 20,000 boards: 0.05 ms per board, no 6/8 ever touches another, every string is different, the desert is spread evenly over the 19 tiles, the ring is shifted about half the time, and the token shuffle needed 7.4 tries on average (68 at most; the limit is 10,000).
 - **No legend under the drawing.** The first version printed a blank line, a `ports:` heading and a list of the nine ports (ring position, orientation, ratio and the tile each attaches to) under the board. That was removed: `--board` prints only the drawing. The arrows in the drawing still show which tile each port attaches to.
+
+
+## 12. Later changes
+
+- The desert is in the **center** by default (`F` or `--desert free` for anywhere); a random seed is **3 different letters**; the **2 and the 12 never touch** (always, also with `A`; a string that breaks it only gets a warning).

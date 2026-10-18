@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 
 from catan_map import GenerationError, SeedCode, generate, parse, serialize
-from catan_map.board import DESERT_ZONES, TILE_COUNT, adjacent_red_pairs, is_corner_slot
+from catan_map.board import DESERT_ZONES, TILE_COUNT, adjacent_low_high_pairs, adjacent_red_pairs, is_corner_slot
 
 SEEDS = ["".join(chr(65 + (n // 26 ** i) % 26) for i in range(5)) for n in range(0, 26 ** 5, 26 ** 5 // 400)]
 
@@ -73,7 +73,7 @@ class Desert(unittest.TestCase):
         counts = [0] * TILE_COUNT
         n = 3800
         for i in range(n):
-            counts[desert_of(generate(f"SEED{chr(65 + i % 26)}{chr(65 + i // 26 % 26)}{chr(65 + i // 676)}"))] += 1
+            counts[desert_of(generate(f"SEED{chr(65 + i % 26)}{chr(65 + i // 26 % 26)}{chr(65 + i // 676)}", desert="free"))] += 1
         expected = n / TILE_COUNT
         for tile, count in enumerate(counts):
             self.assertTrue(0.7 * expected < count < 1.3 * expected, (tile, count, expected))
@@ -84,6 +84,12 @@ class RedNumbers(unittest.TestCase):
         for seed in SEEDS:
             for zone in DESERT_ZONES:
                 self.assertEqual(adjacent_red_pairs(generate(seed, desert=zone).tokens), [], (seed, zone))
+
+    def test_the_2_and_the_12_never_touch_even_when_reds_may(self):
+        for seed in SEEDS:
+            for allow in (False, True):
+                board = generate(seed, allow_adjacent_red=allow)
+                self.assertEqual(adjacent_low_high_pairs(board.tokens), [], (seed, allow))
 
     def test_when_allowed_some_boards_do_have_touching_reds(self):
         touching = [seed for seed in SEEDS if adjacent_red_pairs(generate(seed, allow_adjacent_red=True).tokens)]

@@ -13,7 +13,7 @@ The same seed (with the same options) gives the same board on any machine and an
 ## Quick start
 
 ```
-python -m catan_map                          # a random 6-letter seed: prints the seed and the string
+python -m catan_map                          # a random 3-letter seed: prints the seed and the string
 python -m catan_map --seed KMQXRT            # the same seed always gives the same board
 python -m catan_map --seed KMQXRT --board    # and draw it
 python -m catan_map --string "WSGOCW..."     # read a string instead of using a seed
@@ -30,7 +30,7 @@ The standard island: 19 land tiles in rows of 3, 4, 5, 4 and 3, scanned left to 
 - **Number tokens:** `2 3 4 5 6 8 9 a b c`, where `a` is 10, `b` is 11 and `c` is 12 (there is no 7): one `2`, one `c`, two of each of the others. The desert has no token.
 - **Ports:** 9 of them, four 3:1 and one 2:1 for each resource, on the ring of 18 sea tiles around the island.
 
-By default a **6 or 8 never touches another 6 or 8**.
+By default a **6 or 8 never touches another 6 or 8**, and the **2 and the 12 (`c`) never touch each other**; the second rule always applies, the first can be switched off with the `A` flag.
 
 ## The string
 
@@ -42,7 +42,7 @@ One string, no spaces, up to three parts:
 | tokens | the 18 tokens, in the same order, skipping the desert | 18 |
 | ports (optional) | an optional `X`, then 9 port symbols | 9 (+1) |
 
-Two layouts, chosen with `--format`: **`s`** (sections: tiles, then tokens, then ports) and **`p`** (paired: every tile followed by its token, the desert alone, then ports). With `--pipes` the rows are separated by `|` and the parts by `,`. The reader ignores `|` and `,` and finds the layout by itself.
+Two layouts, chosen with `--format`: **`s`** (sections: tiles, then tokens, then ports) and **`p`** (paired: every tile followed by its token, the desert alone, then ports). By default the rows are separated by `|` and the parts by `,`; `--no-pipes` leaves them out. The reader ignores `|` and `,` and finds the layout by itself.
 
 The same board in every form:
 
@@ -67,11 +67,11 @@ If the ports part is missing, the default `3gO3s#3cW` is used.
 
 ## Seeds
 
-A **seed** is letters only (A-Z), case-insensitive, 1 to 32 letters; a random one is 6 letters (308,915,776 of them). A **seed code** adds the options that are not the default, after a `-`, so that the code alone reproduces a whole string:
+A **seed** is letters only (A-Z), case-insensitive, 1 to 32 letters; a random one is 3 different letters (15,600 of them). A **seed code** adds the options that are not the default, after a `-`, so that the code alone reproduces a whole string:
 
 ```
-KMQXRT        all defaults
-KMQXRT-E      desert on the edge          (E edge, I inner, C center, R ring: only one)
+KMQXRT        all defaults (desert in the center)
+KMQXRT-E      desert on the edge          (F free, E edge, I inner, C center, R ring: only one; the default is C, so it is not written)
 KMQXRT-A      adjacent 6/8 allowed
 KMQXRT-P      the string includes ports
 KMQXRT-RAP    several: the desert letter, then A, then P
@@ -85,16 +85,18 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 |---|---|
 | `--seed CODE` | the seed code; without `--seed` and `--string` a random one is made and printed |
 | `--string STR` | read this string instead (either layout, with or without `\|` and `,`) |
-| `--format s\|p` | sections (default) or paired; `sections` and `paired` also work |
-| `--pipes` | separate rows with `\|` and parts with `,` |
+| `--format s\|p` | sections or paired (default); `sections` and `paired` also work |
+| `--no-pipes` | write the string without the `\|` between rows and the `,` between parts (they are written by default) |
 | `--ports` | include the ports part: random ports from a seed; the default ports when reading a string that has none (a string that has ports always keeps them) |
 | `--board` | draw the board |
 | `--color` | colours in the drawing |
+| `--tiles basic\|realistic\|plain` | the look of the tiles in the SVG: `basic` (flat colours, simple shapes), `realistic` (painted-looking, the default) or `plain` (one colour per tile). Needs `--svg` |
+| `--svg FILE` | write the board as an SVG image (`-` prints it to the terminal; the seed and string go to stderr) |
 | `--ascii` | draw with plain ASCII (this happens by itself on a console that cannot show the arrows) |
-| `--desert free\|edge\|inner\|center\|ring` | where the desert may be: anywhere (default), the 12 tiles on the coast, the 7 that do not touch the sea, the middle tile, or the 6 around it |
+| `--desert free\|edge\|inner\|center\|ring` | where the desert is: the middle tile (default), anywhere, the 12 tiles on the coast, the 7 that do not touch the sea, or the 6 around the middle |
 | `--allow-adjacent-red` | allow a 6 or 8 next to another 6 or 8 |
 
-`-h` or `--help` lists all the options. `--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch is accepted, with a warning on stderr.
+`-h` or `--help` lists all the options. `--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch, or whose 2 and 12 touch, is accepted, with a warning on stderr. So is a string with a non-standard mix of tiles, tokens or ports (18 wood, no desert, ...): it only needs 19 tiles, a token for every tile but the desert, and 9 ports if it has any.
 
 ### The drawing
 
@@ -140,7 +142,7 @@ print(render_board(board, ascii_only=True))
 Only `random.Random.random()` is used, with a hand-written Fisher-Yates shuffle. Python guarantees the sequence of `random()` for a given seed, but not the algorithm of `shuffle`, so a seed gives the same board forever. The seed text is hashed (`sha256("catan-map-v1:" + SEED)`) into the generator's seed. The draws are made in a fixed order, and the ports come last, so asking for ports never changes the tiles or the tokens of a seed:
 
 1. the desert's position among the tiles its option allows, then the other 18 tiles shuffled over the rest;
-2. the tokens, reshuffled until no 6 or 8 touches another (unless allowed);
+2. the tokens, reshuffled until no 6 or 8 touches another (unless allowed) and the 2 and 12 do not touch;
 3. the ports: whether the ring is shifted, a shuffle of the nine types, then the orientation of each port that is not on a corner.
 
 `tests/test_golden.py` holds fixed seeds with their exact strings; if one fails, the generator changed, which would break every seed anyone has shared.

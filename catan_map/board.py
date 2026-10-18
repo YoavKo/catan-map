@@ -31,6 +31,7 @@ TOKEN_CHARS = "2345689abc"
 TOKEN_VALUES = {"2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "8": 8, "9": 9, "a": 10, "b": 11, "c": 12}
 TOKEN_COUNTS = {"2": 1, "3": 2, "4": 2, "5": 2, "6": 2, "8": 2, "9": 2, "a": 2, "b": 2, "c": 1}
 RED_TOKENS = ("6", "8")
+LOW_HIGH_TOKENS = ("2", "c")   # the 2 and the 12, the rarest numbers: they may not touch
 
 # Position of every tile as (row, x). x is a doubled horizontal coordinate that centres
 # each row: two tiles touch when they are in the same row with |dx| = 2, or in adjacent
@@ -143,6 +144,15 @@ def adjacent_red_pairs(tokens):
                 if j > i and tokens[j] in RED_TOKENS:
                     pairs.append((i, j))
     return pairs
+
+
+def adjacent_low_high_pairs(tokens):
+    """The pairs of neighbouring tiles that carry the 2 and the 12 (there is one of each, so
+    there is at most one pair)."""
+    if "2" not in tokens or "c" not in tokens:
+        return []
+    low, high = tokens.index("2"), tokens.index("c")
+    return [(min(low, high), max(low, high))] if high in NEIGHBOURS[low] else []
 
 
 def describe_tile(tile):

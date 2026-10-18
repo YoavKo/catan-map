@@ -12,7 +12,7 @@ changes the tiles or the tokens of a seed:
    18 tiles are shuffled over the remaining positions;
 2. the tokens, shuffled over the 18 non-desert tiles; unless adjacent red numbers are
    allowed, they are shuffled again (the same stream, at most MAX_ATTEMPTS times) until no
-   6 or 8 touches another 6 or 8;
+   6 or 8 touches another 6 or 8; the 2 and the 12 never touch, whatever the option;
 3. the ports, only when asked for: whether the ring is shifted, a shuffle of the nine port
    types, then the orientation of every port that is not on a corner.
 """
@@ -31,11 +31,12 @@ from .board import (
     TILE_COUNTS,
     TOKEN_CHARS,
     TOKEN_COUNTS,
+    adjacent_low_high_pairs,
     adjacent_red_pairs,
     is_corner_slot,
 )
 from .codec import Board, CatanMapError, Port, Ports
-from .seed import SeedCode, normalize_seed
+from .seed import DEFAULT_DESERT, SeedCode, normalize_seed
 
 ALGORITHM = "catan-map-v1"
 MAX_ATTEMPTS = 10_000
@@ -81,9 +82,9 @@ def _generate_tokens(stream, desert, allow_adjacent_red):
         stream.shuffle(symbols)
         iterator = iter(symbols)
         tokens = tuple(None if i == desert else next(iterator) for i in range(TILE_COUNT))
-        if allow_adjacent_red or not adjacent_red_pairs(tokens):
+        if (allow_adjacent_red or not adjacent_red_pairs(tokens)) and not adjacent_low_high_pairs(tokens):
             return tokens
-    raise GenerationError(f"no arrangement without touching 6 and 8 found in {MAX_ATTEMPTS} attempts")
+    raise GenerationError(f"no arrangement without touching 6 and 8 (or 2 and 12) found in {MAX_ATTEMPTS} attempts")
 
 
 def _generate_ports(stream):
@@ -101,15 +102,15 @@ def _generate_ports(stream):
 def generate(code, desert=None, allow_adjacent_red=False, ports=False):
     """The board of a seed. `code` is a SeedCode, or a seed as text (letters only); in the
     second case the options are given as arguments, in the first case they come from the code.
-    `desert` is "free" (or None), "edge", "inner", "center" or "ring"."""
+    `desert` is None (the default, the center), "free", "edge", "inner", "center" or "ring"."""
     if not isinstance(code, SeedCode):
         code = SeedCode(
             normalize_seed(code),
-            None if desert in (None, "free") else desert,
+            desert,
             allow_adjacent_red,
             ports,
         )
-    zone = code.desert or "free"
+    zone = code.desert or DEFAULT_DESERT
     if zone not in DESERT_ZONES:
         raise GenerationError(f"unknown desert option {zone!r}")
 

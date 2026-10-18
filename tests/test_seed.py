@@ -55,12 +55,26 @@ class Codes(unittest.TestCase):
         self.assertEqual(format_seed_code(parse_seed_code("kmqxrt-pe")), "KMQXRT-EP")
         self.assertEqual(format_seed_code(parse_seed_code("kmqxrt-ap")), "KMQXRT-AP")
 
+    def test_the_desert_is_in_the_center_unless_said_otherwise(self):
+        self.assertEqual(parse_seed_code("KMQXRT-F").desert, "free")
+        self.assertEqual(format_seed_code(parse_seed_code("KMQXRT-F")), "KMQXRT-F")
+        self.assertEqual(format_seed_code(parse_seed_code("KMQXRT-C")), "KMQXRT")   # the default is not written
+        self.assertEqual(format_seed_code(parse_seed_code("KMQXRT-CP")), "KMQXRT-P")
+
     def test_writing_and_reading_agree_for_every_combination(self):
-        for desert in (None, "edge", "inner", "center", "ring"):
+        for desert in (None, "free", "edge", "inner", "ring"):
             for adjacent in (False, True):
                 for ports in (False, True):
                     code = SeedCode("ABCDEF", desert, adjacent, ports)
                     self.assertEqual(parse_seed_code(format_seed_code(code)), code)
+
+    def test_a_random_seed_has_no_repeated_letter(self):
+        for _ in range(500):
+            seed = random_seed()
+            self.assertEqual(len(set(seed)), 3, seed)
+        self.assertEqual(len(set(random_seed(26))), 26)
+        with self.assertRaises(ValueError):
+            random_seed(27)
 
     def test_errors(self):
         cases = {
@@ -80,13 +94,14 @@ class Codes(unittest.TestCase):
 
 
 class RandomSeeds(unittest.TestCase):
-    def test_six_uppercase_letters(self):
+    def test_three_uppercase_letters(self):
         for _ in range(200):
             seed = random_seed()
-            self.assertEqual(len(seed), 6)
+            self.assertEqual(len(seed), 3)
             self.assertEqual(normalize_seed(seed), seed)
 
     def test_other_lengths(self):
+        self.assertEqual(len(random_seed()), 3)
         self.assertEqual(len(random_seed(4)), 4)
         self.assertEqual(len(random_seed(10)), 10)
 
@@ -99,7 +114,7 @@ class AddButDoNotChange(unittest.TestCase):
         code = parse_seed_code("KMQXRT")
         self.assertEqual(combine(code, desert="edge"), SeedCode("KMQXRT", "edge"))
         self.assertEqual(combine(code, ports=True, allow_adjacent_red=True), SeedCode("KMQXRT", None, True, True))
-        self.assertEqual(combine(code, desert="free"), SeedCode("KMQXRT"))
+        self.assertEqual(combine(code, desert="free"), SeedCode("KMQXRT", "free"))
         self.assertEqual(combine(code), code)
 
     def test_an_option_that_agrees_is_fine(self):
@@ -111,7 +126,7 @@ class AddButDoNotChange(unittest.TestCase):
         self.assertEqual(combine(code), code)
 
     def test_an_option_that_contradicts_the_code_is_an_error(self):
-        for stated, given in (("E", "inner"), ("E", "free"), ("I", "edge"), ("C", "ring"), ("R", "center")):
+        for stated, given in (("E", "inner"), ("E", "free"), ("F", "edge"), ("I", "edge"), ("C", "ring"), ("C", "free"), ("R", "center")):
             with self.assertRaises(SeedError, msg=(stated, given)) as caught:
                 combine(parse_seed_code("KMQXRT-" + stated), desert=given)
             self.assertIn("seed code says the desert is", str(caught.exception))

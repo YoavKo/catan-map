@@ -4,8 +4,9 @@ A seed is letters only (A-Z), case-insensitive, 1 to 32 letters. A *seed code* i
 the options that are not the default, after a "-", so that the code alone reproduces a
 whole string::
 
-    KMQXRT            all defaults
-    KMQXRT-E          the desert may only be on the edge          (E, I, C or R: one of them)
+    KMQXRT            all defaults (the desert in the center)
+    KMQXRT-F          the desert anywhere                         (F, E, I, C or R: one of them)
+    KMQXRT-E          the desert may only be on the edge
     KMQXRT-A          adjacent 6 and 8 allowed
     KMQXRT-P          the string includes the ports
     KMQXRT-RAP        several: the desert letter, then A, then P
@@ -22,15 +23,18 @@ from typing import Optional
 
 from .codec import CatanMapError
 
-SEED_LENGTH = 6
+SEED_LENGTH = 3
 MAX_SEED_LENGTH = 32
 
 # desert zone <-> its flag letter
-DESERT_FLAGS = {"edge": "E", "inner": "I", "center": "C", "ring": "R"}
+# "center" is the default, so its flag changes nothing and is not written back
+DESERT_FLAGS = {"free": "F", "edge": "E", "inner": "I", "center": "C", "ring": "R"}
+DEFAULT_DESERT = "center"
 _FLAG_DESERT = {letter: zone for zone, letter in DESERT_FLAGS.items()}
 ADJACENT_FLAG = "A"
 PORTS_FLAG = "P"
 _DESERT_PHRASES = {
+    "free": "anywhere (F)",
     "edge": "on the edge (E)",
     "inner": "inside, off the edge (I)",
     "center": "in the center (C)",
@@ -45,7 +49,7 @@ class SeedError(CatanMapError):
 @dataclass(frozen=True)
 class SeedCode:
     seed: str                                # uppercase letters
-    desert: Optional[str] = None             # None means anywhere ("free"), else a zone name
+    desert: Optional[str] = None             # None means the default (the center), else a zone name
     allow_adjacent_red: bool = False
     ports: bool = False
 
@@ -87,7 +91,7 @@ def parse_seed_code(text):
         if letter in _FLAG_DESERT:
             if desert is not None:
                 raise SeedError(
-                    f"only one desert flag is allowed (E, I, C or R), found {DESERT_FLAGS[desert]} and {letter}"
+                    f"only one desert flag is allowed (F, E, I, C or R), found {DESERT_FLAGS[desert]} and {letter}"
                 )
             desert = _FLAG_DESERT[letter]
         elif letter == ADJACENT_FLAG:
@@ -96,15 +100,16 @@ def parse_seed_code(text):
             ports = True
         else:
             raise SeedError(
-                f"unknown flag {letter!r} in the seed code; the flags are E, I, C, R (desert), A and P"
+                f"unknown flag {letter!r} in the seed code; the flags are F, E, I, C, R (desert), A and P"
             )
     return SeedCode(seed, desert, adjacent, ports)
 
 
 def format_seed_code(code):
-    """The code in its one written form: the seed, then the desert letter, A and P."""
+    """The code in its one written form: the seed, then the desert letter (none for the
+    default, the center), A and P."""
     flags = ""
-    if code.desert is not None:
+    if code.desert not in (None, DEFAULT_DESERT):
         flags += DESERT_FLAGS[code.desert]
     if code.allow_adjacent_red:
         flags += ADJACENT_FLAG
@@ -114,7 +119,10 @@ def format_seed_code(code):
 
 
 def random_seed(length=SEED_LENGTH):
-    return "".join(secrets.choice(string.ascii_uppercase) for _ in range(length))
+    """A random seed of `length` different letters (3 by default: 15,600 seeds)."""
+    if length > len(string.ascii_uppercase):
+        raise ValueError(f"a seed of different letters has at most {len(string.ascii_uppercase)} letters")
+    return "".join(secrets.SystemRandom().sample(string.ascii_uppercase, length))
 
 
 def combine(code, desert=None, allow_adjacent_red=False, ports=False):
@@ -122,8 +130,8 @@ def combine(code, desert=None, allow_adjacent_red=False, ports=False):
     line). An option may *add* something the code does not say, but it may not *change* what
     the code says: that raises SeedError.
 
-    `desert` is None (not given), "free" or a zone name. A code without a desert letter says
-    nothing about the desert. `allow_adjacent_red` and `ports` can only be switched on, so
+    `desert` is None (not given) or a zone name ("free", "edge", "inner", "center", "ring"). A
+    code without a desert letter says nothing about the desert, so the default (the center) applies. `allow_adjacent_red` and `ports` can only be switched on, so
     they cannot contradict a code."""
     if code.desert is not None and desert is not None and desert != code.desert:
         raise SeedError(
@@ -131,7 +139,7 @@ def combine(code, desert=None, allow_adjacent_red=False, ports=False):
             f"but the desert option {desert!r} was given"
         )
     final_desert = code.desert
-    if final_desert is None and desert not in (None, "free"):
+    if final_desert is None and desert is not None:
         final_desert = desert
     return SeedCode(
         code.seed,

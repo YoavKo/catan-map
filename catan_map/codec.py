@@ -31,6 +31,7 @@ from .board import (
     TILE_LETTERS,
     TOKEN_CHARS,
     TOKEN_COUNTS,
+    adjacent_low_high_pairs,
     adjacent_red_pairs,
     describe_tile,
     is_corner_slot,
@@ -160,31 +161,30 @@ def _token_error(char, position):
     )
 
 
-def _check_tile_counts(tiles):
+def _tile_count_warnings(tiles):
+    """Messages for a tile mix that is not the standard one (it is allowed, with a warning)."""
     problems = []
     for letter, wanted in TILE_COUNTS.items():
         found = tiles.count(letter)
         if found != wanted:
             problems.append(f"expected {wanted} {letter} but found {found}")
-    if problems:
-        raise CodecError("tiles: " + "; ".join(problems))
+    return ["unusual tiles: " + "; ".join(problems)] if problems else []
 
 
-def _check_token_counts(tokens):
+def _token_count_warnings(tokens):
     problems = []
     real = [t for t in tokens if t is not None]
     for symbol, wanted in TOKEN_COUNTS.items():
         found = real.count(symbol)
         if found != wanted:
             problems.append(f"expected {wanted} of {symbol} but found {found}")
-    if problems:
-        raise CodecError("tokens: " + "; ".join(problems))
+    return ["unusual tokens: " + "; ".join(problems)] if problems else []
 
 
 def _read_ports(rest):
-    """`rest` is a list of (character, position). Returns Ports, or None when empty."""
+    """`rest` is a list of (character, position). Returns (Ports or None when empty, warnings)."""
     if not rest:
-        return None
+        return None, []
     shifted = rest[0][0] == "X"
     symbols = rest[1:] if shifted else rest
     for char, position in symbols:
@@ -204,12 +204,13 @@ def _read_ports(rest):
     found = {}
     for port in ports.entries:
         found[port.kind] = found.get(port.kind, 0) + 1
+    warnings = []
     if found != PORT_KIND_COUNTS:
-        raise CodecError(
-            "ports: there must be four 3:1 ports and one 2:1 port for each of W, O, C, S, G; "
+        warnings.append(
+            "unusual ports: the standard set is four 3:1 ports and one 2:1 port for each of W, O, C, S, G; "
             f"found {dict(sorted(found.items()))}"
         )
-    return ports
+    return ports, warnings
 
 
 def parse(text):
@@ -235,7 +236,6 @@ def parse(text):
     if len(chars) >= TILE_COUNT and all(c in TILE_LETTERS for c, _ in chars[:TILE_COUNT]):
         fmt = "s"
         tiles = [c for c, _ in chars[:TILE_COUNT]]
-        _check_tile_counts(tiles)
         wanted_tokens = TILE_COUNT - tiles.count(DESERT)
         end = TILE_COUNT + wanted_tokens
         if len(chars) < end:
@@ -277,12 +277,16 @@ def parse(text):
             index += 1
         rest = chars[index:]
 
-    _check_tile_counts(tiles)
-    _check_token_counts(tokens)
-    board = Board(tuple(tiles), tuple(tokens), _read_ports(rest))
+    ports, port_warnings = _read_ports(rest)
+    board = Board(tuple(tiles), tuple(tokens), ports)
 
-    warnings = tuple(
-        f"the {tokens[i]} at {describe_tile(i)} touches the {tokens[j]} at {describe_tile(j)}"
-        for i, j in adjacent_red_pairs(board.tokens)
+    warnings = (
+        _tile_count_warnings(tiles)
+        + _token_count_warnings(tokens)
+        + port_warnings
+        + [
+            f"the {tokens[i]} at {describe_tile(i)} touches the {tokens[j]} at {describe_tile(j)}"
+            for i, j in adjacent_red_pairs(board.tokens) + adjacent_low_high_pairs(board.tokens)
+        ]
     )
-    return Parsed(board, fmt, warnings)
+    return Parsed(board, fmt, tuple(warnings))

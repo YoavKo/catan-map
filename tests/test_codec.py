@@ -1,6 +1,6 @@
 import unittest
 
-from catan_map import CodecError, parse, serialize
+from catan_map import CodecError, generate, parse, serialize
 from catan_map.board import DEFAULT_PORTS
 from catan_map.codec import Board, default_ports, ports_to_text
 
@@ -105,8 +105,23 @@ class Reading(unittest.TestCase):
         tokens[2], tokens[6] = tokens[6], tokens[2]
         text = serialize(Board(example_board().tiles, tuple(tokens)), "s")
         parsed = parse(text)
-        self.assertEqual(parsed.warnings, ("the 6 at row 1, column 2 touches the 8 at row 1, column 3",))
-        self.assertEqual(parse(BASE).warnings, ())
+        self.assertIn("the 6 at row 1, column 2 touches the 8 at row 1, column 3", parsed.warnings)
+        # the example board was made by hand, and its 2 and 12 happen to touch
+        self.assertEqual(parse(BASE).warnings, ("the 2 at row 3, column 3 touches the c at row 3, column 4",))
+
+    def test_touching_2_and_12_are_a_warning_not_an_error(self):
+        from catan_map.board import NEIGHBOURS
+
+        board = generate("KMQXRT")
+        self.assertEqual(parse(serialize(board)).warnings, ())
+        tokens = list(board.tokens)
+        low, high = tokens.index("2"), tokens.index("c")
+        neighbour = next(n for n in NEIGHBOURS[low] if tokens[n] is not None and n != high)
+        tokens[high], tokens[neighbour] = tokens[neighbour], tokens[high]    # the 12 next to the 2
+        parsed = parse(serialize(Board(board.tiles, tuple(tokens)), "s"))
+        self.assertEqual(len(parsed.warnings), 1)
+        self.assertIn("2 at", parsed.warnings[0])
+        self.assertIn("c at", parsed.warnings[0])
 
 
 class Errors(unittest.TestCase):
@@ -124,9 +139,18 @@ class Errors(unittest.TestCase):
     def test_a_space_inside_names_its_position(self):
         self.fails(BASE[:10] + " " + BASE[10:], "character 11", "spaces")
 
-    def test_wrong_tile_counts(self):
-        self.fails("W" + BASE[1:].replace("S", "G", 1), "tiles", "expected 4 S")
-        self.fails(BASE.replace("D", "W"), "tiles", "expected 1 D")
+    def test_a_non_standard_tile_mix_is_a_warning_not_an_error(self):
+        parsed = parse("W" + BASE[1:].replace("S", "G", 1))
+        self.assertTrue(any("unusual tiles" in w and "expected 4 S" in w for w in parsed.warnings), parsed.warnings)
+        many = parse("WWWWWWWWWDWWWWWWWWW64b92b485aca538369")            # 18 wood and the desert
+        self.assertEqual(many.board.tiles.count("W"), 18)
+        self.assertIn("expected 4 W but found 18", many.warnings[0])
+        two_deserts = parse("DD" + BASE[2:19].replace("D", "W") + BASE[19:36])   # two deserts: 17 tokens
+        self.assertEqual(two_deserts.board.tokens.count(None), 2)
+
+    def test_a_board_without_a_desert_needs_a_token_on_every_tile(self):
+        self.fails(BASE.replace("D", "W"), "too short")
+        self.assertEqual(parse(BASE.replace("D", "W") + "2").board.tokens.count(None), 0)
 
     def test_too_short(self):
         self.fails(BASE[:30], "too short")
@@ -138,8 +162,9 @@ class Errors(unittest.TestCase):
     def test_an_uppercase_token_letter_gets_a_hint(self):
         self.fails(BASE[:19] + "C" + BASE[20:], "character 20", "lowercase")
 
-    def test_wrong_token_counts(self):
-        self.fails(BASE[:19] + "2" + BASE[20:], "tokens", "expected 2 of 5")
+    def test_a_non_standard_token_mix_is_a_warning_not_an_error(self):
+        parsed = parse(BASE[:19] + "2" + BASE[20:])
+        self.assertTrue(any("unusual tokens" in w and "expected 2 of 5" in w for w in parsed.warnings), parsed.warnings)
 
     def test_paired_errors(self):
         paired = EXAMPLES[("p", False, False)]
@@ -153,7 +178,7 @@ class Errors(unittest.TestCase):
         self.fails(BASE + "3gO3s#3c", "ports", "expected 9")
         self.fails(BASE + "3gO3s#3cWW", "expected 9")
         self.fails(BASE + "3gO3s#3cZ", "port symbol")
-        self.fails(BASE + "3gO3s#3c3", "ports", "four 3:1")
+        self.assertTrue(any("unusual ports" in w for w in parse(BASE + "3gO3s#3c3").warnings))
         self.fails(BASE + "3gO3sX3cW", "X is only allowed at the start")
         self.fails(BASE + "XX3gO3s#3cW", "X is only allowed")
         self.fails(BASE + "X3gO3s#3c", "after the X")

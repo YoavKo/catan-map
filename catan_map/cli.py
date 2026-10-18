@@ -23,6 +23,8 @@ import argparse  # noqa: E402
 from .board import DESERT_ZONES
 from .codec import CatanMapError, parse, serialize
 from .generator import generate
+from .render_svg import render_svg
+from .svg_tiles import DEFAULT_TILE_SET, TILE_SET_NAMES
 from .render_text import UNICODE_ARROWS, render_board
 from .seed import SeedCode, combine, parse_seed_code, random_seed
 
@@ -40,28 +42,42 @@ def build_parser():
     source.add_argument(
         "--seed", metavar="CODE",
         help="the seed code: letters only, case-insensitive, optionally followed by -FLAGS "
-        "(E I C R for the desert, A for adjacent 6/8, P for ports), for example KMQXRT-EP. "
-        "Without --seed and --string a random 6-letter seed is made",
+        "(F E I C R for the desert, A for adjacent 6/8, P for ports), for example KMQXRT-EP. "
+        "Without --seed and --string a random seed of 3 different letters is made",
     )
     source.add_argument("--string", metavar="STR", help="read this string (either layout, with or without | and ,)")
     parser.add_argument(
-        "--format", choices=sorted(FORMATS), default="s", metavar="s|p",
+        "--format", choices=sorted(FORMATS), default="p", metavar="s|p",
         help="s (sections: tiles, tokens, ports) or p (paired: each tile followed by its token); "
-        "sections and paired also work (default s)",
+        "sections and paired also work (default p)",
     )
-    parser.add_argument("--pipes", action="store_true", help="separate the rows with | and the parts with ,")
+    parser.add_argument(
+        "--no-pipes", action="store_true",
+        help="write the string without the | between the rows and the , between the parts "
+        "(by default they are written)",
+    )
     parser.add_argument(
         "--ports", action="store_true",
         help="include the ports part: random ports when making a board from a seed; the default "
         "ports when reading a string that has none (a string that has ports always keeps them)",
     )
     parser.add_argument("--board", action="store_true", help="draw the board in the console")
+    parser.add_argument(
+        "--svg", metavar="FILE",
+        help="write the board as an SVG image to FILE ('-' prints the SVG to the terminal, and the "
+        "seed and string go to stderr)",
+    )
+    parser.add_argument(
+        "--tiles", choices=TILE_SET_NAMES, metavar="|".join(TILE_SET_NAMES),
+        help=f"the look of the tiles in the SVG: basic (flat colours and simple shapes), realistic "
+        f"(painted-looking) or plain (one colour per tile); default {DEFAULT_TILE_SET}. Needs --svg",
+    )
     parser.add_argument("--color", action="store_true", help="colours in the drawing")
     parser.add_argument("--ascii", action="store_true", help="draw with plain ASCII characters only")
     parser.add_argument(
         "--desert", choices=list(DESERT_ZONES), metavar="free|edge|inner|center|ring",
-        help="where the desert may be: free (anywhere, the default), edge (12 tiles on the coast), "
-        "inner (the 7 tiles that do not touch the sea), center (the middle tile) or ring (the 6 "
+        help="where the desert is: center (the middle tile, the default), free (anywhere), edge (12 tiles on the coast), "
+        "inner (the 7 tiles that do not touch the sea) or ring (the 6 "
         "tiles around the middle)",
     )
     parser.add_argument(
@@ -87,7 +103,11 @@ def _can_print_arrows():
 
 def run(args):
     fmt = FORMATS[args.format]
+    pipes = not args.no_pipes
+    if args.tiles is not None and args.svg is None:
+        raise CatanMapError("--tiles only applies together with --svg")
     lines = []
+    caption = []
 
     if args.string is not None:
         if args.desert is not None or args.allow_adjacent_red:
@@ -98,7 +118,8 @@ def run(args):
         parsed = parse(args.string)
         board = parsed.board
         include_ports = board.ports is not None or args.ports
-        lines.append("string: " + serialize(board, fmt, args.pipes, include_ports))
+        lines.append("string: " + serialize(board, fmt, pipes, include_ports))
+        caption.append(serialize(board, fmt, pipes, include_ports))
         for warning in parsed.warnings:
             print(f"warning: {warning}", file=sys.stderr)
     else:
@@ -106,12 +127,24 @@ def run(args):
         code = combine(code, desert=args.desert, allow_adjacent_red=args.allow_adjacent_red, ports=args.ports)
         board = generate(code)
         lines.append(f"seed:   {code}")
-        lines.append("string: " + serialize(board, fmt, args.pipes, code.ports))
+        lines.append("string: " + serialize(board, fmt, pipes, code.ports))
+        caption.extend((str(code), serialize(board, fmt, pipes, code.ports)))
 
     if args.board:
         ascii_only = args.ascii or not _can_print_arrows()
         lines.append("")
         lines.append(render_board(board, ascii_only=ascii_only, color=args.color))
+    if args.svg == "-":
+        print("\n".join(lines), file=sys.stderr)
+        print(render_svg(board, caption, args.tiles), end="")
+        return 0
+    if args.svg is not None:
+        try:
+            with open(args.svg, "w", encoding="utf-8") as handle:
+                handle.write(render_svg(board, caption, args.tiles))
+        except OSError as error:
+            raise CatanMapError(f"cannot write {args.svg}: {error.strerror or error}") from error
+        lines.append(f"svg:    {args.svg}")
     print("\n".join(lines))
     return 0
 

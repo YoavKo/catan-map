@@ -31,10 +31,10 @@ def lines_of(stdout):
 
 
 class MakingABoard(unittest.TestCase):
-    def test_without_arguments_a_random_six_letter_seed(self):
+    def test_without_arguments_a_random_three_letter_seed(self):
         code, out, err = run()
         self.assertEqual((code, err), (0, ""))
-        seed = re.match(r"seed:   ([A-Z]{6})\n", out)
+        seed = re.match(r"seed:   ([A-Z]{3})\n", out)
         self.assertTrue(seed, out)
         string = out.split("string: ")[1].strip()
         self.assertEqual(parse(string).board, generate(seed.group(1)))
@@ -44,23 +44,33 @@ class MakingABoard(unittest.TestCase):
         self.assertGreater(len(seeds), 15)
 
     def test_a_seed_always_gives_the_same_output(self):
-        first = run("--seed", "KMQXRT")
-        self.assertEqual(first, run("--seed", "kmqxrt"))
-        self.assertEqual(first[1], "seed:   KMQXRT\nstring: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n")
+        first = run("--seed", "KMQXRT", "--format", "s", "--no-pipes")
+        self.assertEqual(first, run("--seed", "kmqxrt", "--format", "s", "--no-pipes"))
+        self.assertEqual(first[1], "seed:   KMQXRT\nstring: CGGWSWWCODGCGOSSOSW58ab94ca33645298b6\n")
+
+    def test_the_default_layout_is_paired(self):
+        out = run("--seed", "KMQXRT", "--no-pipes")[1]
+        self.assertEqual(out.split("string: ")[1].strip(), serialize(generate("KMQXRT"), "p"))
+
+    def test_pipes_are_written_by_default(self):
+        out = run("--seed", "KMQXRT-P")[1]
+        self.assertEqual(out.split("string: ")[1].strip(), serialize(generate("KMQXRT", ports=True), "p", True, True))
+        self.assertIn("|", out)
+        self.assertEqual(run("--seed", "KMQXRT", "--pipes")[0], 2)      # the old flag is gone
 
     def test_formats_and_pipes(self):
         board = generate("KMQXRT")
         for flag, fmt in (("s", "s"), ("sections", "s"), ("p", "p"), ("paired", "p")):
             for pipes in (False, True):
-                args = ["--seed", "KMQXRT", "--format", flag] + (["--pipes"] if pipes else [])
+                args = ["--seed", "KMQXRT", "--format", flag] + ([] if pipes else ["--no-pipes"])
                 code, out, _ = run(*args)
                 self.assertEqual(code, 0)
                 self.assertEqual(out.split("string: ")[1].strip(), serialize(board, fmt, pipes))
 
     def test_ports_are_added_with_the_flag_and_not_otherwise(self):
-        self.assertEqual(len(run("--seed", "KMQXRT")[1].split("string: ")[1].strip()), 37)
-        with_ports = run("--seed", "KMQXRT", "--ports")[1]
-        self.assertTrue(with_ports.split("string: ")[1].strip().endswith("XcgW#3#os3"))
+        self.assertEqual(len(run("--seed", "KMQXRT", "--no-pipes")[1].split("string: ")[1].strip()), 37)
+        with_ports = run("--seed", "KMQXRT", "--ports", "--no-pipes")[1]
+        self.assertTrue(with_ports.split("string: ")[1].strip().endswith("XO3Gws3#c3"))
         self.assertIn("seed:   KMQXRT-P\n", with_ports)
 
     def test_the_printed_seed_is_the_full_seed_code(self):
@@ -100,16 +110,17 @@ class ReadingAString(unittest.TestCase):
     def test_either_layout_to_either_layout(self):
         paired = serialize(parse(BASE).board, "p")
         for given in (BASE, paired, serialize(parse(BASE).board, "s", True)):
-            self.assertEqual(run("--string", given, "--format", "p")[1], f"string: {paired}\n")
-            self.assertEqual(run("--string", given)[1], f"string: {BASE}\n")
+            self.assertEqual(run("--string", given, "--format", "p", "--no-pipes")[1], f"string: {paired}\n")
+            self.assertEqual(run("--string", given, "--format", "s", "--no-pipes")[1], f"string: {BASE}\n")
+            self.assertEqual(run("--string", given, "--no-pipes")[1], f"string: {paired}\n")      # paired is the default
 
     def test_a_string_with_ports_keeps_them(self):
         text = BASE + "X3gO3s#3cW"
-        self.assertEqual(run("--string", text)[1], f"string: {text}\n")
-        self.assertEqual(run("--string", text, "--pipes")[1], f"string: {serialize(parse(text).board, 's', True, True)}\n")
+        self.assertEqual(run("--string", text, "--format", "s", "--no-pipes")[1], f"string: {text}\n")
+        self.assertEqual(run("--string", text, "--format", "s")[1], f"string: {serialize(parse(text).board, 's', True, True)}\n")
 
     def test_the_ports_flag_adds_the_default_ports(self):
-        self.assertEqual(run("--string", BASE, "--ports")[1], f"string: {BASE}3gO3s#3cW\n")
+        self.assertEqual(run("--string", BASE, "--ports", "--format", "s", "--no-pipes")[1], f"string: {BASE}3gO3s#3cW\n")
 
     def test_no_seed_line_when_reading(self):
         self.assertNotIn("seed:", run("--string", BASE)[1])
@@ -124,10 +135,10 @@ class ReadingAString(unittest.TestCase):
         tokens[2], tokens[6] = tokens[6], tokens[2]
         from catan_map.codec import Board
         text = serialize(Board(parse(BASE).board.tiles, tuple(tokens)), "s")
-        code, out, err = run("--string", text)
+        code, out, err = run("--string", text, "--format", "s", "--no-pipes")
         self.assertEqual(code, 0)
         self.assertIn("string: " + text, out)
-        self.assertEqual(err, "warning: the 6 at row 1, column 2 touches the 8 at row 1, column 3\n")
+        self.assertIn("warning: the 6 at row 1, column 2 touches the 8 at row 1, column 3\n", err)
 
     def test_seed_options_do_not_apply_to_a_string(self):
         for option in (["--desert", "edge"], ["--allow-adjacent-red"]):
@@ -143,9 +154,9 @@ class ReadingAString(unittest.TestCase):
 
 class Drawing(unittest.TestCase):
     def test_the_board_is_drawn_under_the_string(self):
-        code, out, _ = run("--seed", "KMQXRT", "--board")
+        code, out, _ = run("--seed", "KMQXRT", "--board", "--format", "s", "--no-pipes")
         self.assertEqual(code, 0)
-        self.assertIn("string: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n\n", out)
+        self.assertIn("string: CGGWSWWCODGCGOSSOSW58ab94ca33645298b6\n\n", out)
         self.assertIn("↘", out)
         # only the drawing: no heading and no list of ports under it
         self.assertNotIn("ports", out)
@@ -177,9 +188,9 @@ class AsAProgram(unittest.TestCase):
         return subprocess.run([sys.executable, "-m", "catan_map", *args], capture_output=True, text=True, cwd=ROOT, env=full)
 
     def test_python_dash_m_works(self):
-        done = self.call("--seed", "KMQXRT")
+        done = self.call("--seed", "KMQXRT", "--format", "s", "--no-pipes")
         self.assertEqual(done.returncode, 0)
-        self.assertEqual(done.stdout, "seed:   KMQXRT\nstring: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n")
+        self.assertEqual(done.stdout, "seed:   KMQXRT\nstring: CGGWSWWCODGCGOSSOSW58ab94ca33645298b6\n")
 
     def test_a_bad_input_exits_with_code_two(self):
         done = self.call("--seed", "KM2XRT")
@@ -200,7 +211,7 @@ class AsAProgram(unittest.TestCase):
         return subprocess.run([sys.executable, *args], capture_output=True, text=True, cwd=cwd, env=env)
 
     def test_it_runs_when_started_as_a_file_or_a_folder(self):
-        expected = "seed:   KMQXRT\nstring: CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8\n"
+        expected = "seed:   KMQXRT\nstring: CGGWSWWCODGCGOSSOSW58ab94ca33645298b6\n"
         elsewhere = tempfile.gettempdir()
         starts = [
             (["catan_map/cli.py"], ROOT),                                    # python catan_map/cli.py
@@ -209,7 +220,7 @@ class AsAProgram(unittest.TestCase):
             ([str(ROOT / "catan_map")], elsewhere),                          # python path/to/catan_map
         ]
         for command, cwd in starts:
-            done = self.run_file(*command, "--seed", "KMQXRT", cwd=cwd)
+            done = self.run_file(*command, "--seed", "KMQXRT", "--format", "s", "--no-pipes", cwd=cwd)
             self.assertEqual((done.returncode, done.stdout, done.stderr), (0, expected, ""), command)
 
     def test_started_as_a_file_help_and_errors_still_work(self):
@@ -225,7 +236,7 @@ class AsAProgram(unittest.TestCase):
     def test_help_mentions_the_options(self):
         done = self.call("--help")
         self.assertEqual(done.returncode, 0)
-        for word in ("--seed", "--string", "--format", "--pipes", "--ports", "--board", "--color", "--ascii", "--desert", "--allow-adjacent-red"):
+        for word in ("--seed", "--string", "--format", "--no-pipes", "--ports", "--board", "--color", "--ascii", "--desert", "--allow-adjacent-red"):
             self.assertIn(word, done.stdout)
 
 

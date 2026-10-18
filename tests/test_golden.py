@@ -9,18 +9,19 @@ import unittest
 from catan_map import generate, serialize
 
 CASES = [
-    ("KMQXRT", {}, "CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8"),
+    ("KMQXRT", {}, "CGGWSWWCODGCGOSSOSW58ab94ca33645298b6"),
+    ("KMQXRT", {"desert": "free"}, "CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8"),
     ("KMQXRT", {"desert": "edge"}, "CGDGWSWWCOGCGOSSOSW2a5ba8456996c433b8"),
     ("KMQXRT", {"desert": "center"}, "CGGWSWWCODGCGOSSOSW58ab94ca33645298b6"),
     ("KMQXRT", {"desert": "ring"}, "CGGWSDWWCOGCGOSSOSW2a5ba8456996c433b8"),
     ("KMQXRT", {"desert": "inner"}, "CGGWSDWWCOGCGOSSOSW2a5ba8456996c433b8"),
-    ("KMQXRT", {"allow_adjacent_red": True}, "CGGDWSWWCOGCGOSSOSW956862aa485b943bc3"),
-    ("KMQXRT", {"ports": True}, "CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8XcgW#3#os3"),
-    ("AAAAAA", {}, "SOWSSOWDCCGCSWWOGGG258443a596ba6bc398"),
-    ("ZZZZZZ", {"ports": True}, "CGDSOGCSGWOCSSGWOWW5c8528439bb646aa393#3oc3sWg"),
+    ("KMQXRT", {"desert": "free", "allow_adjacent_red": True}, "CGGDWSWWCOGCGOSSOSW956862aa485b943bc3"),
+    ("KMQXRT", {"desert": "free", "ports": True}, "CGGDWSWWCOGCGOSSOSW2a5ba8456996c433b8XcgW#3#os3"),
+    ("AAAAAA", {"desert": "free"}, "SOWSSOWDCCGCSWWOGGG258443a596ba6bc398"),
+    ("ZZZZZZ", {"desert": "free", "ports": True}, "CGDSOGCSGWOCSSGWOWW892bb865a4a395634cX#sG#3#Cow"),
     ("CATAN", {"ports": True, "desert": "ring"}, "SSCOWDWGCGGSOCWSWOG3ab6b894652c9a83543cG3swo##"),
-    ("A", {}, "OSCWSCGGDSOWWWOGSCGb449536a8b9625ca83"),
-    ("PLAYERONE", {"allow_adjacent_red": True, "ports": True}, "CGCWGDGGWSSSOWOWOSC35245b68bc899364aaX3wCgs##3o"),
+    ("A", {"desert": "free"}, "OSCWSCGGDSOWWWOGSCGb449536a8b9625ca83"),
+    ("PLAYERONE", {"desert": "free", "allow_adjacent_red": True, "ports": True}, "CGCWGDGGWSSSOWOWOSC35245b68bc899364aaX3wCgs##3o"),
 ]
 
 
