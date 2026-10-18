@@ -31,15 +31,35 @@ class TileSet:
     shadows: bool = False        # whether tokens and port badges cast a small shadow
 
 
+# The art of a tile stops where its border starts: the hexagon shrunk by half the border width.
+_INSET = (HALF_WIDTH - BORDER_WIDTH / 2) / HALF_WIDTH
+INSET_POINTS = " ".join(
+    f"{float(x) * _INSET:.2f},{float(y) * _INSET:.2f}" for x, y in (pair.split(",") for pair in HEX_POINTS.split())
+)
+
+
 def symbol(letter, name, ground_fill, art="", overlay="", defs=""):
-    """A land tile: the ground, the art clipped to the hexagon, an overlay, the border."""
+    """A land tile: the ground and the art, clipped to the hexagon inside its border, and an
+    overlay. The border is not part of it: see edge_symbols()."""
     return (
         f'<symbol id="tile-{letter}" overflow="visible">{defs}'
-        f'<clipPath id="clip-{letter}"><polygon points="{HEX_POINTS}"/></clipPath>'
-        f'<polygon points="{HEX_POINTS}" fill="{ground_fill}"/>'
+        f'<clipPath id="clip-{letter}"><polygon points="{INSET_POINTS}"/></clipPath>'
+        f'<polygon points="{HEX_POINTS}" fill="{ground_fill}" clip-path="url(#clip-{letter})"/>'
         f'<g clip-path="url(#clip-{letter})">{art}{overlay}</g>'
-        f'<polygon points="{HEX_POINTS}" fill="none" stroke="{OUTLINE}" stroke-width="{BORDER_WIDTH + 3}" stroke-linejoin="round"/>'
-        f'<polygon points="{HEX_POINTS}" fill="none" stroke="{BORDER}" stroke-width="{BORDER_WIDTH}" stroke-linejoin="round"/>'
+        f'<polygon points="{INSET_POINTS}" fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="0.9" stroke-linejoin="round"/>'
         f'<title>{name}</title>'
         f'</symbol>'
+    )
+
+
+def edge_symbols():
+    """The border of a land tile, in two layers. A board draws the dark layer of every land
+    tile, then the light layer of every land tile, then the tiles: the light borders of
+    neighbours merge into one off-white band, and the dark line is left only around the whole
+    island, so that the land is one shape."""
+    return (
+        f'<symbol id="edge-dark" overflow="visible"><polygon points="{HEX_POINTS}" fill="{OUTLINE}" stroke="{OUTLINE}" '
+        f'stroke-width="{BORDER_WIDTH + 3}" stroke-linejoin="round"/></symbol>'
+        f'<symbol id="edge-light" overflow="visible"><polygon points="{HEX_POINTS}" fill="{BORDER}" stroke="{BORDER}" '
+        f'stroke-width="{BORDER_WIDTH}" stroke-linejoin="round"/></symbol>'
     )

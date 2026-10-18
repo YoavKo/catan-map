@@ -9,15 +9,17 @@ from __future__ import annotations
 
 from . import tiles_basic, tiles_plain, tiles_realistic
 from .codec import CatanMapError
-from .tiles_common import BORDER, BORDER_WIDTH, HALF_WIDTH, HEX_POINTS, OUTLINE, RADIUS, TileSet
+from .tiles_common import BORDER, BORDER_WIDTH, HALF_WIDTH, HEX_POINTS, OUTLINE, RADIUS, TileSet, edge_symbols
 
-__all__ = ["DEFAULT_TILE_SET", "TILE_SET_NAMES", "get_tile_set", "tile_defs", "port_group", "preview_svg"]
+__all__ = ["DEFAULT_TILE_SET", "TILE_SET_NAMES", "get_tile_set", "tile_defs", "port_group", "preview_svg", "resource_icon", "bare_icon"]
 
 _BUILDERS = {"basic": tiles_basic.build, "realistic": tiles_realistic.build, "plain": tiles_plain.build}
 TILE_SET_NAMES = tuple(_BUILDERS)
 DEFAULT_TILE_SET = "realistic"
 _cache = {}
 
+# the ring of a clay chip or badge is brick red, whatever the colour of the clay tile
+RING_COLOR = {"C": "#b4533a"}
 DOCK = {"plank": "#b98a58", "line": "#7a5632", "post": "#5e4026"}
 
 
@@ -104,6 +106,26 @@ _PORT_ICONS = {
 }
 
 
+def bare_icon(kind, cx, cy, size):
+    """The resource's icon alone, with no chip around it, centred on (cx, cy), about `size` wide."""
+    return f'<g transform="translate({cx:g} {cy:g}) scale({size / 26:.4f})">{_PORT_ICONS[kind]}</g>'
+
+
+def resource_icon(kind, x, y, size, tiles=None):
+    """A square cream chip with a ring in the resource's colour and the resource's icon
+    (the same icon as on its port), top left corner at (x, y), `size` wide."""
+    tile_set = get_tile_set(tiles)
+    inset = size * 0.09
+    return (
+        f'<g transform="translate({x:g} {y:g})">'
+        f'<rect width="{size:g}" height="{size:g}" rx="{size * 0.16:.2f}" fill="#f6f0dc" stroke="{OUTLINE}" stroke-width="{size * 0.05:.2f}"/>'
+        f'<rect x="{inset:.2f}" y="{inset:.2f}" width="{size - 2 * inset:.2f}" height="{size - 2 * inset:.2f}" rx="{size * 0.1:.2f}" '
+        f'fill="none" stroke="{RING_COLOR.get(kind, tile_set.ground[kind])}" stroke-width="{size * 0.07:.2f}"/>'
+        f'<g transform="translate({size / 2:.2f} {size / 2:.2f}) scale({size * 0.56 / 26:.4f})">{_PORT_ICONS[kind]}</g>'
+        f'</g>'
+    )
+
+
 def port_group(kind, way, x=0, y=0, tiles=None):
     """A port sea tile at (x, y): sea, a pier toward the coast (`way`: E, W, NE, NW, SE or
     SW), and a round badge. A 3:1 port shows "3:1"; a 2:1 port shows the resource's icon
@@ -119,7 +141,7 @@ def port_group(kind, way, x=0, y=0, tiles=None):
     else:
         badge = (
             f'<circle r="35" fill="#f6f0dc" stroke="{OUTLINE}" stroke-width="3"/>'
-            f'<circle r="31" fill="none" stroke="{tile_set.ground[kind]}" stroke-width="4"/>'
+            f'<circle r="31" fill="none" stroke="{RING_COLOR.get(kind, tile_set.ground[kind])}" stroke-width="4"/>'
             f'<g transform="translate(0 -10) scale(1.3)">{_PORT_ICONS[kind]}</g>'
             f'<text y="23" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" '
             f'font-weight="bold" fill="#2b2b2b">2:1</text>'
@@ -135,16 +157,20 @@ def port_group(kind, way, x=0, y=0, tiles=None):
 
 def tile_defs(tiles=None):
     tile_set = get_tile_set(tiles)
-    return "<defs>" + tile_set.defs + "".join(tile_set.symbols) + tile_set.sea + _dock_symbol() + "</defs>"
+    return "<defs>" + tile_set.defs + edge_symbols() + "".join(tile_set.symbols) + tile_set.sea + _dock_symbol() + "</defs>"
 
 
 def preview_svg(tiles=None):
     """All the tiles, the sea, and the ports of a tile set, to look at the artwork."""
     step = 2 * HALF_WIDTH + 14
     width = step * 7 + 14
-    uses = "".join(
-        f'<use href="#tile-{letter}" x="{14 + HALF_WIDTH + i * step}" y="114"/>' for i, letter in enumerate("WSGCOD")
-    ) + f'<use href="#sea" x="{14 + HALF_WIDTH + 6 * step}" y="114"/>'
+    positions = [(letter, 14 + HALF_WIDTH + i * step) for i, letter in enumerate("WSGCOD")]
+    uses = (
+        "".join(f'<use href="#edge-dark" x="{x}" y="114"/>' for _, x in positions)
+        + "".join(f'<use href="#edge-light" x="{x}" y="114"/>' for _, x in positions)
+        + "".join(f'<use href="#tile-{letter}" x="{x}" y="114"/>' for letter, x in positions)
+        + f'<use href="#sea" x="{14 + HALF_WIDTH + 6 * step}" y="114"/>'
+    )
     ports = "".join(
         port_group(kind, way, 14 + HALF_WIDTH + i * step, 342, tiles)
         for i, (kind, way) in enumerate(

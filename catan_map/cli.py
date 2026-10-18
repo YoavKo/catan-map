@@ -23,7 +23,7 @@ import argparse  # noqa: E402
 from .board import DESERT_ZONES
 from .codec import CatanMapError, parse, serialize
 from .generator import generate
-from .render_svg import render_svg
+from .render_svg import ELEMENTS, check_elements, logo_data_uri, render_svg
 from .svg_tiles import DEFAULT_TILE_SET, TILE_SET_NAMES
 from .render_text import UNICODE_ARROWS, render_board
 from .seed import SeedCode, combine, parse_seed_code, random_seed
@@ -68,6 +68,19 @@ def build_parser():
         "seed and string go to stderr)",
     )
     parser.add_argument(
+        "--elements", nargs="*", metavar="ELEMENT",
+        help="make the SVG a printable 60 x 60 cm sheet (the board 550 x 505 mm, the number tokens 25 mm "
+        "across) with these things on it, separated by spaces or commas: "
+        "costs (a Building Costs card in each corner), bank (places for the bank along the bottom), "
+        "seed (the seed code, big), str (the string, on one line), logo (the --logo-img image, as large as "
+        "fits); 'all' means all of them. With no names it is the bare sheet. Needs --svg",
+    )
+    parser.add_argument(
+        "--logo-img", metavar="FILE",
+        help="the image (png, jpg, gif, webp or svg) for the logo element; it is embedded in the SVG "
+        "(needs --svg and --elements with logo)",
+    )
+    parser.add_argument(
         "--tiles", choices=TILE_SET_NAMES, metavar="|".join(TILE_SET_NAMES),
         help=f"the look of the tiles in the SVG: basic (flat colours and simple shapes), realistic "
         f"(painted-looking) or plain (one colour per tile); default {DEFAULT_TILE_SET}. Needs --svg",
@@ -101,11 +114,31 @@ def _can_print_arrows():
     return True
 
 
+def _elements(args):
+    """The --elements as a tuple of names, or None when the option is not given."""
+    if args.elements is None:
+        if args.logo_img is not None:
+            raise CatanMapError("--logo-img only applies when --elements includes logo")
+        return None
+    names = [name.strip() for value in args.elements for name in value.split(",") if name.strip()]
+    if "all" in names:
+        names = [name for name in ELEMENTS if name != "logo" or args.logo_img is not None]
+    elements = check_elements(names)
+    if "logo" in elements and args.logo_img is None:
+        raise CatanMapError("the logo element needs --logo-img FILE")
+    if args.logo_img is not None and "logo" not in elements:
+        raise CatanMapError("--logo-img only applies when --elements includes logo")
+    return elements
+
+
 def run(args):
     fmt = FORMATS[args.format]
     pipes = not args.no_pipes
-    if args.tiles is not None and args.svg is None:
-        raise CatanMapError("--tiles only applies together with --svg")
+    for flag, given in (("--tiles", args.tiles is not None), ("--elements", args.elements is not None),
+                        ("--logo-img", args.logo_img is not None)):
+        if given and args.svg is None:
+            raise CatanMapError(f"{flag} only applies together with --svg")
+    elements = _elements(args)
     lines = []
     caption = []
 
@@ -134,14 +167,15 @@ def run(args):
         ascii_only = args.ascii or not _can_print_arrows()
         lines.append("")
         lines.append(render_board(board, ascii_only=ascii_only, color=args.color))
+    logo = logo_data_uri(args.logo_img) if args.logo_img is not None else None
     if args.svg == "-":
         print("\n".join(lines), file=sys.stderr)
-        print(render_svg(board, caption, args.tiles), end="")
+        print(render_svg(board, caption, args.tiles, elements, logo), end="")
         return 0
     if args.svg is not None:
         try:
             with open(args.svg, "w", encoding="utf-8") as handle:
-                handle.write(render_svg(board, caption, args.tiles))
+                handle.write(render_svg(board, caption, args.tiles, elements, logo))
         except OSError as error:
             raise CatanMapError(f"cannot write {args.svg}: {error.strerror or error}") from error
         lines.append(f"svg:    {args.svg}")

@@ -90,6 +90,8 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--ports` | include the ports part: random ports from a seed; the default ports when reading a string that has none (a string that has ports always keeps them) |
 | `--board` | draw the board |
 | `--color` | colours in the drawing |
+| `--elements [NAMES]` | make the SVG a printable 60 x 60 cm sheet (the board 550 x 505 mm, the number tokens 25 mm across) with these things on it, separated by spaces or commas: `costs` (a Building Costs card in each corner), `bank` (places for the bank along the bottom; the island moves up), `seed` (the seed code, big), `str` (the string, on one line), `logo` (the `--logo-img` image, as large as fits). `all` means all of them; no names means the bare sheet. Needs `--svg` |
+| `--logo-img FILE` | the image (png, jpg, gif, webp or svg) for the `logo` element, embedded in the SVG. Needs `--svg` and `--elements` with `logo` |
 | `--tiles basic\|realistic\|plain` | the look of the tiles in the SVG: `basic` (flat colours, simple shapes), `realistic` (painted-looking, the default) or `plain` (one colour per tile). Needs `--svg` |
 | `--svg FILE` | write the board as an SVG image (`-` prints it to the terminal; the seed and string go to stderr) |
 | `--ascii` | draw with plain ASCII (this happens by itself on a console that cannot show the arrows) |

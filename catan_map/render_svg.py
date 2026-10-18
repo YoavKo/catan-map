@@ -7,6 +7,8 @@ text and always the same for the same board.
 """
 from __future__ import annotations
 
+import base64
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from .board import (
@@ -20,6 +22,9 @@ from .board import (
     port_ring_position,
     port_target_tile,
 )
+from .codec import CatanMapError
+from .imagesize import data_uri_size
+from .svg_cards import CARD_HEIGHT, CARD_WIDTH, bank_group, building_costs_card
 from .svg_tiles import get_tile_set, port_group, tile_defs
 from .tiles_common import HALF_WIDTH, OUTLINE, RADIUS
 
@@ -28,6 +33,33 @@ MARGIN = 24
 CAPTION_LINE = 34
 BACKGROUND = "#f7f3e3"
 TOKEN_RADIUS = 31
+
+# The printed mat (--elements): a square sheet, with the board and the tokens at a real size, in mm.
+# --elements says what else is on it: these, in any number.
+ELEMENTS = ("costs", "bank", "seed", "str", "logo")
+MAT_MM = 600
+BOARD_MM = (550, 505)     # the board (with its sea) is drawn as large as fits in this
+TOKEN_MM = 25             # the diameter of a number token
+CARD_MARGIN = 5
+# the seed and string above the bottom right card, right-aligned, under the logo
+STACK_RIGHT = 595       # mm
+STACK_WIDTH = 97        # the free width above the card: the island's sea ends 498 mm from the left
+SEED_SIZE = 24          # mm: the seed is big, to be read from across the table; a long code is written smaller to fit
+STRING_SIZE = 6.4       # mm: the size the string would be, about twice a whole string on one line over the card...
+STRING_MIN = 2.5        # ...but it is kept on one line, so it is made as large as the room allows, down to this
+SEED_BASELINE = 509     # the baseline of the seed, just above the bottom right card (when the card is there)
+SEED_BASELINE_FREE = 588    # and when there is no card
+SEED_GAP = 3            # mm between the string and the seed under it
+GLYPH = 0.6             # the width of a monospace character, as a fraction of its size
+BOARD_TOP_MARGIN = 3    # with the bank, the island moves up to this far from the top edge
+LOGO_BOX = (498, 415, 97, 70)       # x, y, width, height in mm: used when the shape of the logo is not known
+LOGO_GAP = 4            # mm between the logo and the island
+CARD_BOTTOM = 125       # the top right card (turned) ends here; the logo stays below it
+SEED_CAP = 0.75         # the height of the seed's capital letters, as a fraction of its size
+LOGO_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+              ".webp": "image/webp", ".svg": "image/svg+xml"}
+# the four cards, turned to face the four sides of the table: (corner, turn in degrees)
+CARD_PLACES = (("top-left", 180), ("top-right", 270), ("bottom-left", 90), ("bottom-right", 0))
 
 
 def _center(row, x):
@@ -38,15 +70,16 @@ def _num(value):
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
-def _token(symbol, x, y, tile_set):
+def _token(symbol, x, y, tile_set, scale=1.0):
     value = TOKEN_VALUES[symbol]
     red = symbol in RED_TOKENS
     ink = "#c0261d" if red else "#2b2b2b"
     pips = 6 - abs(7 - value)
     pip_x = [(i - (pips - 1) / 2) * 7 for i in range(pips)]
     dots = "".join(f'<circle cx="{_num(dx)}" cy="19" r="2.2" fill="{ink}"/>' for dx in pip_x)
+    zoom = f" scale({scale:.4f})" if scale != 1 else ""
     return (
-        f'<g transform="translate({_num(x)} {_num(y)})">'
+        f'<g transform="translate({_num(x)} {_num(y)}){zoom}">'
         + (f'<circle cx="2.5" cy="3.5" r="{TOKEN_RADIUS}" fill="#000000" opacity="0.32"/>' if tile_set.shadows else "")
         + f'<circle r="{TOKEN_RADIUS}" fill="{tile_set.token_fill}" stroke="{OUTLINE}" stroke-width="2.5"/>'
         f'<text y="6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="{26 if value < 10 else 23}" '
@@ -55,16 +88,130 @@ def _token(symbol, x, y, tile_set):
     )
 
 
-def render_svg(board, caption=(), tiles=None):
-    """The board as an SVG document (text). `caption` is lines of text written under it;
-    `tiles` is the name of the tile set ("basic", "realistic" or "plain"; the default if None)."""
+def logo_data_uri(path):
+    """The image file at `path` as a data: URI, so that the SVG holds the logo itself."""
+    path = Path(path)
+    kind = LOGO_TYPES.get(path.suffix.lower())
+    if kind is None:
+        raise CatanMapError(f"cannot use {path} as a logo: its type must be one of {', '.join(LOGO_TYPES)}")
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise CatanMapError(f"cannot read the logo {path}: {error.strerror or error}") from error
+    return f"data:{kind};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _island_edge(shift, scale, y):
+    """The furthest right the island (the sea tiles around it) reaches at height y of the sheet, in mm."""
+    right = 0.0
+    for position in range(RING_SIZE):
+        row, x = RING_POSITIONS[position]
+        centre_x = MAT_MM / 2 + x * HALF_WIDTH * scale
+        dy = abs(y - (shift + row * ROW_STEP * scale)) / scale        # in the board's units
+        if dy > RADIUS:
+            continue
+        half = HALF_WIDTH if dy <= RADIUS / 2 else HALF_WIDTH * (RADIUS - dy) / (RADIUS / 2)
+        right = max(right, centre_x + half * scale)
+    return right
+
+
+def fit_logo(aspect, shift, scale, bottom, top_limit=CARD_BOTTOM + LOGO_GAP):
+    """The largest box of the logo's shape (width / height = aspect) that fits in the free corner:
+    its right side at the right margin, its bottom at `bottom`, clear of the island and of the
+    top right card. Returns (x, y, width, height) in mm, or None if nothing fits."""
+    right = STACK_RIGHT
+    height = bottom - top_limit
+    while height >= 10:
+        width = aspect * height
+        top = bottom - height
+        left = right - width
+        edge = max(_island_edge(shift, scale, top + step * (height / 40)) for step in range(41))
+        if left >= edge + LOGO_GAP:
+            return left, top, width, height
+        height -= 0.5
+    return None
+
+
+def stack_layout(seed, string, shift, scale, base=SEED_BASELINE):
+    """Where the seed and the string go in the bottom right corner, one under the other: the
+    seed with its baseline at `base`, and above it the string, on one line (either may be
+    empty). Returns (the seed's size, its baseline, the string's size, its baseline, the top of
+    the stack), in mm. The string is as large as fits between the right margin and the island,
+    but at most STRING_SIZE."""
+    seed_size = min(SEED_SIZE, STACK_WIDTH / (GLYPH * len(seed))) if seed else SEED_SIZE
+    seed_top = base - SEED_CAP * seed_size if seed else base
+    string_size, string_baseline = 0.0, None
+    if string:
+        string_baseline = seed_top - SEED_GAP if seed else base
+        string_size = STRING_SIZE
+        while string_size > STRING_MIN:
+            left = STACK_RIGHT - 1 - GLYPH * string_size * len(string)
+            top = string_baseline - SEED_CAP * string_size
+            edge = max(_island_edge(shift, scale, top + (string_baseline - top) * k / 10) for k in range(11))
+            if left >= edge + LOGO_GAP:
+                break
+            string_size -= 0.1
+        top = string_baseline - SEED_CAP * string_size
+    else:
+        top = seed_top
+    return seed_size, base, round(string_size, 2), string_baseline, top
+
+
+def check_elements(elements):
+    """The elements as a tuple, or CatanMapError when one is not known."""
+    elements = tuple(elements)
+    unknown = [name for name in elements if name not in ELEMENTS]
+    if unknown:
+        raise CatanMapError(f"unknown element {unknown[0]!r}; the elements are {', '.join(ELEMENTS)}")
+    return elements
+
+
+def _mat_card(corner, turn, tile_set):
+    """One building-costs card, turned by `turn` degrees, in a corner of the mat."""
+    sideways = turn in (90, 270)
+    width, height = (CARD_HEIGHT, CARD_WIDTH) if sideways else (CARD_WIDTH, CARD_HEIGHT)
+    x = CARD_MARGIN + width / 2 if "left" in corner else MAT_MM - CARD_MARGIN - width / 2
+    y = CARD_MARGIN + height / 2 if "top" in corner else MAT_MM - CARD_MARGIN - height / 2
+    return (
+        f'<g transform="translate({_num(x)} {_num(y)}) rotate({turn}) translate({-CARD_WIDTH / 2:g} {-CARD_HEIGHT / 2:g})">'
+        f'{building_costs_card(tile_set.name)}</g>'
+    )
+
+
+def render_svg(board, caption=(), tiles=None, elements=None, logo=None):
+    """The board as an SVG document (text). `caption` is the seed code and the string (or just
+    the string); `tiles` is the name of the tile set ("basic", "realistic" or "plain"; the
+    default if None).
+
+    With `elements` None the image is the board with the caption under it. With `elements`, a
+    list of names from ELEMENTS (it may be empty), it is a printable sheet instead:
+    MAT_MM x MAT_MM millimetres, the board as large as fits in BOARD_MM and the number tokens
+    TOKEN_MM across, and these things on it:
+
+    costs  a Building Costs card in each corner, turned toward its side of the table
+    bank   places for the resource cards and the development cards along the bottom edge
+           (the island moves up to make room)
+    seed   the seed code, big, in the bottom right corner
+    str    the string, on one line, above the seed
+    logo   the image `logo` (a data: URI, see logo_data_uri), as large as fits, above them"""
     tile_set = get_tile_set(tiles)
+    mat = elements is not None
+    elements = check_elements(elements) if mat else ()
+    costs, bank = "costs" in elements, "bank" in elements
+    if "logo" in elements and logo is None:
+        raise CatanMapError("the logo element needs a logo image")
     ports = board.effective_ports()
     port_at = {}
     for slot, port in enumerate(ports.entries):
         position = port_ring_position(slot, ports.shifted)
         way = direction(position, port_target_tile(slot, ports.shifted, port.forward))
         port_at[position] = (port.kind, way)
+
+    # the board is drawn in its own units (a tile is 200 high) and scaled for the mat
+    board_width = 14 * HALF_WIDTH
+    board_top, board_bottom = -(ROW_STEP + RADIUS), 5 * ROW_STEP + RADIUS
+    scale = min(BOARD_MM[0] / board_width, BOARD_MM[1] / (board_bottom - board_top)) if mat else 1.0
+    token_scale = (TOKEN_MM / 2 / scale) / TOKEN_RADIUS if mat else 1.0
 
     sea = []
     for position in range(RING_SIZE):
@@ -75,34 +222,77 @@ def render_svg(board, caption=(), tiles=None):
         else:
             sea.append(f'<use href="#sea" x="{_num(x)}" y="{_num(y)}"/>')
 
-    land, tokens = [], []
+    land, dark, light, tokens = [], [], [], []
     for tile in range(TILE_COUNT):
         x, y = _center(*TILE_POSITIONS[tile])
+        dark.append(f'<use href="#edge-dark" x="{_num(x)}" y="{_num(y)}"/>')
+        light.append(f'<use href="#edge-light" x="{_num(x)}" y="{_num(y)}"/>')
         land.append(f'<use href="#tile-{board.tiles[tile]}" x="{_num(x)}" y="{_num(y)}"/>')
         if board.tokens[tile] is not None:
-            tokens.append(_token(board.tokens[tile], x, y, tile_set))
+            tokens.append(_token(board.tokens[tile], x, y, tile_set, token_scale))
+    drawing = (
+        f'<g id="water">{"".join(sea)}</g>'
+        f'<g id="edges">{"".join(dark)}{"".join(light)}</g>'
+        f'<g id="land">{"".join(land)}</g>'
+        f'<g id="tokens">{"".join(tokens)}</g>'
+    )
+    description = " | ".join(caption) if caption else "A Settlers of Catan board"
+    head = f'<title>Catan board</title><desc>{escape(description)}</desc>{tile_defs(tile_set.name)}'
+
+    if mat:
+        # the island is centred on the sheet, or with a bank moved up to leave room under it
+        shift = BOARD_TOP_MARGIN - board_top * scale if bank else MAT_MM / 2 - (board_top + board_bottom) / 2 * scale
+        cards = "".join(_mat_card(corner, turn, tile_set) for corner, turn in CARD_PLACES) if costs else ""
+        bank_strip = bank_group(tile_set.name) if bank else ""
+        seed = caption[0] if "seed" in elements and len(caption) > 1 else ""
+        string = caption[-1] if "str" in elements and caption else ""
+        seed_size, seed_baseline, string_size, string_baseline, stack_top = stack_layout(
+            seed, string, shift, scale, SEED_BASELINE if costs else SEED_BASELINE_FREE
+        )
+        captions = (
+            (f'<text x="{STACK_RIGHT - 1}" y="{_num(seed_baseline)}" text-anchor="end" font-family="Consolas, Menlo, monospace" '
+             f'font-size="{_num(seed_size)}" fill="#2b2b2b">{escape(seed)}</text>' if seed else "")
+            + (f'<text x="{STACK_RIGHT - 1}" y="{_num(string_baseline)}" text-anchor="end" font-family="Consolas, Menlo, monospace" '
+               f'font-size="{_num(string_size)}" fill="#2b2b2b">{escape(string)}</text>' if string else "")
+        )
+        picture = ""
+        if "logo" in elements:
+            box_x, box_y, box_w, box_h = LOGO_BOX
+            size = data_uri_size(logo)
+            if size:
+                fitted = fit_logo(
+                    size[0] / size[1], shift, scale, stack_top - LOGO_GAP,
+                    CARD_BOTTOM + LOGO_GAP if costs else CARD_MARGIN,
+                )
+                if fitted:
+                    box_x, box_y, box_w, box_h = (round(v, 2) for v in fitted)
+            picture = (
+                f'<image x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" '
+                f'preserveAspectRatio="xMaxYMax meet" href="{logo}"/>'
+            )
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {MAT_MM} {MAT_MM}" width="{MAT_MM}mm" height="{MAT_MM}mm">'
+            f'{head}<rect width="{MAT_MM}" height="{MAT_MM}" fill="{BACKGROUND}"/>'
+            f'<g transform="translate({MAT_MM / 2:g} {_num(shift)}) scale({scale:.5f})">{drawing}</g>'
+            f'{cards}{bank_strip}{captions}{picture}</svg>\n'
+        )
 
     left = -(6 * HALF_WIDTH + HALF_WIDTH) - MARGIN
-    top = -(ROW_STEP + RADIUS) - MARGIN
+    top = board_top - MARGIN
     width = 2 * (7 * HALF_WIDTH + MARGIN)
-    board_height = (5 * ROW_STEP + RADIUS) - top + MARGIN   # bottom of row 5 plus margin
-    height = board_height + (len(caption) * CAPTION_LINE + MARGIN if caption else 0)
+    full_height = board_bottom - top + MARGIN   # bottom of row 5 plus margin
+    height = full_height + (len(caption) * CAPTION_LINE + MARGIN if caption else 0)
 
     captions = "".join(
-        f'<text x="{_num(left + width / 2)}" y="{_num(top + board_height + CAPTION_LINE * (i + 0.6))}" '
+        f'<text x="{_num(left + width / 2)}" y="{_num(top + full_height + CAPTION_LINE * (i + 0.6))}" '
         f'text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="{24 if i == 0 else 18}" '
         f'fill="#2b2b2b">{escape(line)}</text>'
         for i, line in enumerate(caption)
     )
-    description = " | ".join(caption) if caption else "A Settlers of Catan board"
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{_num(left)} {_num(top)} {_num(width)} {_num(height)}" '
         f'width="{_num(width / 2)}" height="{_num(height / 2)}">'
-        f'<title>Catan board</title><desc>{escape(description)}</desc>'
-        f'{tile_defs(tile_set.name)}'
+        f'{head}'
         f'<rect x="{_num(left)}" y="{_num(top)}" width="{_num(width)}" height="{_num(height)}" fill="{BACKGROUND}"/>'
-        f'<g id="water">{"".join(sea)}</g>'
-        f'<g id="land">{"".join(land)}</g>'
-        f'<g id="tokens">{"".join(tokens)}</g>'
-        f'{captions}</svg>\n'
+        f'{drawing}{captions}</svg>\n'
     )
