@@ -297,7 +297,7 @@ catan-map/
 
 - **Images:** an SVG (no new dependency) or a PNG with Pillow, which the site already uses.
 - **The site:** a page like `/tools/catan-map/<seed code>` that shows the board and the string, using the package from the new repository.
-- **Bigger islands:** the board layout (row lengths, piece counts, ring) becomes a parameter, with a layout code in the string. Seeds of the standard board must not change.
+- **Bigger islands:** the board layout (row lengths, piece counts, ring) becomes a parameter, with a layout code in the string. Seeds of the standard board must not change. The 5-6 player board, Cities & Knights and Seafarers build on this: see `IDEAS.md`.
 
 ## 10. Decisions and open questions
 

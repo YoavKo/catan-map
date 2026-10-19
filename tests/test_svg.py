@@ -113,12 +113,61 @@ class Mat(unittest.TestCase):
                  for g in root.findall("s:g", NS) if g.find("s:g[@class='costs']", NS) is not None]
         self.assertEqual(turns, ["180", "270", "90", "0"])
 
-    def test_a_card_says_what_things_cost(self):
+    def test_a_card_says_what_things_cost_in_hebrew_by_default(self):
         root, _ = self.drawing(("costs",))
+        words = "".join(root.find(".//s:g[@class='costs']", NS).itertext())
+        for word in ("עלויות בנייה", "דרך", 'נק"נ', "יישוב", "עיר", "קלף התפתחות", "[0 ", "[1 ", "[2 ", "[? "):
+            self.assertIn(word, words)
+        self.assertNotIn("BUILDING COSTS", words)
+
+    def test_a_card_in_english(self):
+        root = ET.fromstring(render_svg(self.board, ["KMQXRT-P", "C5G8"], elements=("costs",), lang="en"))
         words = "".join(root.find(".//s:g[@class='costs']", NS).itertext())
         for word in ("BUILDING COSTS", "Road", "[0 VP]", "Settlement", "[1 VP]", "City", "[2 VP]", "Development Card", "[? VP]"):
             self.assertIn(word, words)
+        self.assertNotIn("עלויות", words)
 
+    def test_the_hebrew_card_is_mirrored(self):
+        he = ET.fromstring(render_svg(self.board, elements=("costs",), lang="he"))
+        en = ET.fromstring(render_svg(self.board, elements=("costs",), lang="en"))
+        card = lambda root: root.find(".//s:g[@class='costs']", NS)
+        self.assertEqual(card(he).get("data-lang"), "he")
+        self.assertEqual(card(en).get("data-lang"), "en")
+        he_names = [t for t in card(he).findall("s:text", NS) if t.get("direction") == "rtl"]
+        self.assertEqual(len(he_names), 5)                                  # the title and the four lines
+        self.assertEqual(len([t for t in card(en).findall("s:text", NS) if t.get("direction")]), 0)
+        he_lines = [t for t in he_names if t.get("text-anchor") != "middle"]
+        self.assertTrue(all(float(t.get("x")) > 100 for t in he_lines))      # the names start at the right
+        en_lines = [t for t in card(en).findall("s:text", NS) if t.get("text-anchor") != "middle"]
+        self.assertTrue(all(float(t.get("x")) < 20 for t in en_lines))       # and in English at the left
+
+    def test_the_chips_are_at_the_left_in_hebrew_with_the_first_one_next_to_the_name(self):
+        from catan_map.svg_cards import _icons
+
+        def clay_x(svg):
+            """The x of the clay chip and of the wood chip in a row of chips."""
+            xs = {kind: float(x) for kind, x in re.findall(r'<g class="chip" data-kind="(\w)" transform="translate\(([\d.]+) ', svg)}
+            return xs["C"], xs["W"]
+
+        he_clay, he_wood = clay_x(_icons("CW", 0, None, rtl=True))
+        en_clay, en_wood = clay_x(_icons("CW", 0, None, rtl=False))
+        self.assertLess(max(he_clay, he_wood), 40)                          # Hebrew: at the left
+        self.assertGreater(min(en_clay, en_wood), 80)                       # English: at the right
+        self.assertGreater(he_clay, he_wood)                                # Hebrew: the first chip (clay) is the rightmost, by the name
+        self.assertLess(en_clay, en_wood)                                   # English: the first chip is the leftmost
+
+    def test_an_unknown_language(self):
+        with self.assertRaises(CatanMapError):
+            render_svg(self.board, elements=("costs",), lang="fr")
+
+    def test_the_language_option_on_the_command_line(self):
+        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--elements", "costs", "--lang", "en")
+        self.assertEqual(code, 0)
+        self.assertIn("BUILDING COSTS", out)
+        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--elements", "costs")
+        self.assertIn("עלויות בנייה", out)                                  # Hebrew by default
+        self.assertEqual(run("--seed", "KMQXRT", "--lang", "en")[0], 2)      # needs --svg
+        self.assertEqual(run("--seed", "KMQXRT", "--svg", "-", "--lang", "fr")[0], 2)
 
 class Logo(unittest.TestCase):
     PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63fcffff3f0005fe02fea7d6c5f50000000049454e44ae426082")

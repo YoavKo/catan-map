@@ -23,6 +23,8 @@ import argparse  # noqa: E402
 from .board import DESERT_ZONES
 from .api import FORMATS, make
 from .codec import CatanMapError
+from .icons import DEFAULT_ICON_SET, ICON_SET_NAMES
+from .svg_cards import DEFAULT_LANGUAGE, LANGUAGES
 from .render_svg import ELEMENTS, check_elements, logo_data_uri, render_svg
 from .svg_tiles import DEFAULT_TILE_SET, TILE_SET_NAMES
 from .render_text import UNICODE_ARROWS, render_board
@@ -39,7 +41,7 @@ def build_parser():
     source.add_argument(
         "--seed", metavar="CODE",
         help="the seed code: letters only, case-insensitive, optionally followed by -FLAGS "
-        "(F E I C R for the desert, A for adjacent 6/8, P for ports), for example KMQXRT-EP. "
+        "(F E I C R for the desert, A for adjacent 6/8, L for a touching 2 and 12, U for no same neighbours, P for ports), for example KMQXRT-EP. "
         "Without --seed and --string a random seed of 3 different letters is made",
     )
     source.add_argument("--string", metavar="STR", help="read this string (either layout, with or without | and ,)")
@@ -78,6 +80,16 @@ def build_parser():
         "(needs --svg and --elements with logo)",
     )
     parser.add_argument(
+        "--lang", choices=LANGUAGES, metavar="|".join(LANGUAGES),
+        help=f"the language of the words on the sheet, the Building Costs cards: he (Hebrew) or en (English); "
+        f"default {DEFAULT_LANGUAGE}. Needs --svg",
+    )
+    parser.add_argument(
+        "--icons", choices=ICON_SET_NAMES, metavar="|".join(ICON_SET_NAMES),
+        help=f"the small resource icons (ports, cost cards, bank): simple (flat), detailed (flat, more shapes) or "
+        f"realistic (painted-looking); default {DEFAULT_ICON_SET}. Needs --svg",
+    )
+    parser.add_argument(
         "--tiles", choices=TILE_SET_NAMES, metavar="|".join(TILE_SET_NAMES),
         help=f"the look of the tiles in the SVG: basic (flat colours and simple shapes), realistic "
         f"(painted-looking) or plain (one colour per tile); default {DEFAULT_TILE_SET}. Needs --svg",
@@ -93,6 +105,14 @@ def build_parser():
     parser.add_argument(
         "--allow-adjacent-red", action="store_true",
         help="allow a 6 or 8 next to another 6 or 8 (by default they never touch)",
+    )
+    parser.add_argument(
+        "--allow-adjacent-2-12", action="store_true",
+        help="allow the 2 and the 12 next to each other (by default they never touch)",
+    )
+    parser.add_argument(
+        "--no-same-neighbours", action="store_true",
+        help="no two neighbouring tiles of the same terrain (not required by default)",
     )
     return parser
 
@@ -131,12 +151,15 @@ def _elements(args):
 def run(args):
     fmt = FORMATS[args.format]
     pipes = not args.no_pipes
-    for flag, given in (("--tiles", args.tiles is not None), ("--elements", args.elements is not None),
+    for flag, given in (("--tiles", args.tiles is not None), ("--lang", args.lang is not None), ("--icons", args.icons is not None), ("--elements", args.elements is not None),
                         ("--logo-img", args.logo_img is not None)):
         if given and args.svg is None:
             raise CatanMapError(f"{flag} only applies together with --svg")
     elements = _elements(args)
-    made = make(args.seed, args.string, args.desert, args.allow_adjacent_red, args.ports, fmt, pipes)
+    made = make(
+        args.seed, args.string, args.desert, args.allow_adjacent_red, args.ports, fmt, pipes,
+        args.allow_adjacent_2_12, args.no_same_neighbours,
+    )
     board = made.board
     lines = []
     if made.code:
@@ -153,12 +176,12 @@ def run(args):
     logo = logo_data_uri(args.logo_img) if args.logo_img is not None else None
     if args.svg == "-":
         print("\n".join(lines), file=sys.stderr)
-        print(render_svg(board, caption, args.tiles, elements, logo), end="")
+        print(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons), end="")
         return 0
     if args.svg is not None:
         try:
             with open(args.svg, "w", encoding="utf-8") as handle:
-                handle.write(render_svg(board, caption, args.tiles, elements, logo))
+                handle.write(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons))
         except OSError as error:
             raise CatanMapError(f"cannot write {args.svg}: {error.strerror or error}") from error
         lines.append(f"svg:    {args.svg}")

@@ -20,6 +20,10 @@ CASES = [
     ("AAAAAA", {"desert": "free"}, "SOWSSOWDCCGCSWWOGGG258443a596ba6bc398"),
     ("ZZZZZZ", {"desert": "free", "ports": True}, "CGDSOGCSGWOCSSGWOWW892bb865a4a395634cX#sG#3#Cow"),
     ("CATAN", {"ports": True, "desert": "ring"}, "SSCOWDWGCGGSOCWSWOG3ab6b894652c9a83543cG3swo##"),
+    ("ZZZZZZ", {"desert": "free", "allow_adjacent_low_high": True}, "CGDSOGCSGWOCSSGWOWW5c8528439bb646aa39"),   # the old board of this seed: its 2 and 12 touch
+    ("KMQXRT", {"no_same_neighbours": True}, "WGSGSWOWCDCSOWOGCGS3836b4b59a29c6485a"),
+    ("KMQXRT", {"no_same_neighbours": True, "ports": True}, "WGSGSWOWCDCSOWOGCGS3836b4b59a29c6485a333w3OcGS"),
+    ("ABC", {"no_same_neighbours": True, "desert": "edge", "allow_adjacent_low_high": True}, "WGCGSOWOWGCSCOWGSDS896954ab2cb683a345"),
     ("A", {"desert": "free"}, "OSCWSCGGDSOWWWOGSCGb449536a8b9625ca83"),
     ("PLAYERONE", {"desert": "free", "allow_adjacent_red": True, "ports": True}, "CGCWGDGGWSSSOWOWOSC35245b68bc899364aaX3wCgs##3o"),
 ]

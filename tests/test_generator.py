@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 
 from catan_map import GenerationError, SeedCode, generate, parse, serialize
-from catan_map.board import DESERT_ZONES, TILE_COUNT, adjacent_low_high_pairs, adjacent_red_pairs, is_corner_slot
+from catan_map.board import DESERT_ZONES, NEIGHBOURS, TILE_COUNT, adjacent_low_high_pairs, adjacent_red_pairs, is_corner_slot
 
 SEEDS = ["".join(chr(65 + (n // 26 ** i) % 26) for i in range(5)) for n in range(0, 26 ** 5, 26 ** 5 // 400)]
 
@@ -148,3 +148,77 @@ class PortsAreDrawnLast(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def same_neighbours(board):
+    return [(i, j) for i in range(TILE_COUNT) for j in NEIGHBOURS[i] if j > i and board.tiles[i] == board.tiles[j] != "D"]
+
+
+class TwoAndTwelve(unittest.TestCase):
+    def test_by_default_they_never_touch(self):
+        for seed in SEEDS:
+            self.assertEqual(adjacent_low_high_pairs(generate(seed).tokens), [], seed)
+
+    def test_when_allowed_they_sometimes_do(self):
+        touching = [s for s in SEEDS if adjacent_low_high_pairs(generate(s, allow_adjacent_low_high=True).tokens)]
+        self.assertGreater(len(touching), 20)
+
+    def test_allowing_it_changes_only_the_boards_that_were_refused(self):
+        same = different = 0
+        for seed in SEEDS:
+            a, b = generate(seed), generate(seed, allow_adjacent_low_high=True)
+            self.assertEqual(a.tiles, b.tiles)                      # the tiles are drawn before the tokens
+            if a.tokens == b.tokens:
+                same += 1
+            else:
+                different += 1
+                self.assertTrue(adjacent_low_high_pairs(b.tokens))   # the board that was refused is the one that touches
+        self.assertGreater(same, 0)
+        self.assertGreater(different, 0)
+
+    def test_the_red_rule_still_holds_with_it(self):
+        for seed in SEEDS:
+            self.assertEqual(adjacent_red_pairs(generate(seed, allow_adjacent_low_high=True).tokens), [], seed)
+
+
+class NoSameNeighbours(unittest.TestCase):
+    def test_no_two_neighbours_match(self):
+        for seed in SEEDS:
+            for zone in DESERT_ZONES:
+                board = generate(seed, desert=zone, no_same_neighbours=True)
+                self.assertEqual(same_neighbours(board), [], (seed, zone))
+
+    def test_it_is_still_a_whole_board_with_the_other_rules(self):
+        for seed in SEEDS[:60]:
+            board = generate(seed, no_same_neighbours=True, ports=True)
+            self.assertEqual(sorted(board.tiles), sorted("WWWWSSSSGGGGOOOCCCD"))
+            self.assertEqual(adjacent_red_pairs(board.tokens), [])
+            self.assertEqual(adjacent_low_high_pairs(board.tokens), [])
+            self.assertEqual(parse(serialize(board, "p", True, True)).board, board)
+
+    def test_the_same_seed_gives_the_same_board(self):
+        self.assertEqual(generate("KMQXRT", no_same_neighbours=True), generate("KMQXRT", no_same_neighbours=True))
+        self.assertEqual(generate("KMQXRT", no_same_neighbours=True), generate(SeedCode("KMQXRT", no_same_neighbours=True)))
+
+    def test_it_is_off_by_default_and_ordinary_boards_do_touch(self):
+        touching = [s for s in SEEDS if same_neighbours(generate(s))]
+        self.assertGreater(len(touching), len(SEEDS) * 0.9)         # nearly every ordinary board has some
+        self.assertEqual(generate("KMQXRT"), generate("KMQXRT", no_same_neighbours=False))
+
+    def test_the_ports_do_not_change_the_tiles(self):
+        a = generate("KMQXRT", no_same_neighbours=True)
+        b = generate("KMQXRT", no_same_neighbours=True, ports=True)
+        self.assertEqual((a.tiles, a.tokens), (b.tiles, b.tokens))
+
+    def test_the_desert_zone_is_kept(self):
+        for zone in ("edge", "inner", "ring"):
+            for seed in SEEDS[:40]:
+                board = generate(seed, desert=zone, no_same_neighbours=True)
+                self.assertIn(board.tiles.index("D"), DESERT_ZONES[zone])
+
+    def test_it_is_fast(self):
+        import time
+        start = time.time()
+        for seed in SEEDS[:200]:
+            generate(seed, desert="edge", no_same_neighbours=True)
+        self.assertLess(time.time() - start, 5)

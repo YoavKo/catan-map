@@ -24,7 +24,8 @@ from .board import (
 )
 from .codec import CatanMapError
 from .imagesize import data_uri_size
-from .svg_cards import CARD_HEIGHT, CARD_WIDTH, bank_group, building_costs_card
+from .icons import check_icon_set
+from .svg_cards import CARD_HEIGHT, CARD_WIDTH, bank_group, building_costs_card, check_language
 from .svg_tiles import get_tile_set, port_group, tile_defs
 from .tiles_common import HALF_WIDTH, OUTLINE, RADIUS
 
@@ -33,6 +34,11 @@ MARGIN = 24
 CAPTION_LINE = 34
 BACKGROUND = "#f7f3e3"
 TOKEN_RADIUS = 31
+# The number on a token: large, on a token that keeps its size. The pips sit under it.
+DIGIT_SIZE = 35         # one digit (2 to 9)
+DIGIT_SIZE_WIDE = 29    # 10, 11, 12
+DIGIT_BASELINE = 9
+PIP_Y = 21
 
 # The printed mat (--elements): a square sheet, with the board and the tokens at a real size, in mm.
 # --elements says what else is on it: these, in any number.
@@ -76,13 +82,13 @@ def _token(symbol, x, y, tile_set, scale=1.0):
     ink = "#c0261d" if red else "#2b2b2b"
     pips = 6 - abs(7 - value)
     pip_x = [(i - (pips - 1) / 2) * 7 for i in range(pips)]
-    dots = "".join(f'<circle cx="{_num(dx)}" cy="19" r="2.2" fill="{ink}"/>' for dx in pip_x)
+    dots = "".join(f'<circle cx="{_num(dx)}" cy="{PIP_Y}" r="2.3" fill="{ink}"/>' for dx in pip_x)
     zoom = f" scale({scale:.4f})" if scale != 1 else ""
     return (
         f'<g transform="translate({_num(x)} {_num(y)}){zoom}">'
         + (f'<circle cx="2.5" cy="3.5" r="{TOKEN_RADIUS}" fill="#000000" opacity="0.32"/>' if tile_set.shadows else "")
         + f'<circle r="{TOKEN_RADIUS}" fill="{tile_set.token_fill}" stroke="{OUTLINE}" stroke-width="2.5"/>'
-        f'<text y="6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="{26 if value < 10 else 23}" '
+        f'<text y="{DIGIT_BASELINE}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="{DIGIT_SIZE if value < 10 else DIGIT_SIZE_WIDE}" '
         f'font-weight="bold" fill="{ink}">{value}</text>'
         f'{dots}</g>'
     )
@@ -166,7 +172,7 @@ def check_elements(elements):
     return elements
 
 
-def _mat_card(corner, turn, tile_set):
+def _mat_card(corner, turn, tile_set, lang=None, icons=None):
     """One building-costs card, turned by `turn` degrees, in a corner of the mat."""
     sideways = turn in (90, 270)
     width, height = (CARD_HEIGHT, CARD_WIDTH) if sideways else (CARD_WIDTH, CARD_HEIGHT)
@@ -174,11 +180,11 @@ def _mat_card(corner, turn, tile_set):
     y = CARD_MARGIN + height / 2 if "top" in corner else MAT_MM - CARD_MARGIN - height / 2
     return (
         f'<g transform="translate({_num(x)} {_num(y)}) rotate({turn}) translate({-CARD_WIDTH / 2:g} {-CARD_HEIGHT / 2:g})">'
-        f'{building_costs_card(tile_set.name)}</g>'
+        f'{building_costs_card(tile_set.name, lang, icons)}</g>'
     )
 
 
-def render_svg(board, caption=(), tiles=None, elements=None, logo=None):
+def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=None, icons=None):
     """The board as an SVG document (text). `caption` is the seed code and the string (or just
     the string); `tiles` is the name of the tile set ("basic", "realistic" or "plain"; the
     default if None).
@@ -188,13 +194,16 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None):
     MAT_MM x MAT_MM millimetres, the board as large as fits in BOARD_MM and the number tokens
     TOKEN_MM across, and these things on it:
 
-    costs  a Building Costs card in each corner, turned toward its side of the table
+    costs  a Building Costs card in each corner, turned toward its side of the table, in `lang`
+           ("he", the default, or "en")
     bank   places for the resource cards and the development cards along the bottom edge
            (the island moves up to make room)
     seed   the seed code, big, in the bottom right corner
     str    the string, on one line, above the seed
     logo   the image `logo` (a data: URI, see logo_data_uri), as large as fits, above them"""
     tile_set = get_tile_set(tiles)
+    lang = check_language(lang)
+    icons = check_icon_set(icons)
     mat = elements is not None
     elements = check_elements(elements) if mat else ()
     costs, bank = "costs" in elements, "bank" in elements
@@ -218,7 +227,7 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None):
         x, y = _center(*RING_POSITIONS[position])
         if position in port_at:
             kind, way = port_at[position]
-            sea.append(port_group(kind, way, _num(x), _num(y), tile_set.name))
+            sea.append(port_group(kind, way, _num(x), _num(y), tile_set.name, icons))
         else:
             sea.append(f'<use href="#sea" x="{_num(x)}" y="{_num(y)}"/>')
 
@@ -237,13 +246,13 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None):
         f'<g id="tokens">{"".join(tokens)}</g>'
     )
     description = " | ".join(caption) if caption else "A Settlers of Catan board"
-    head = f'<title>Catan board</title><desc>{escape(description)}</desc>{tile_defs(tile_set.name)}'
+    head = f'<title>Catan board</title><desc>{escape(description)}</desc>{tile_defs(tile_set.name, icons)}'
 
     if mat:
         # the island is centred on the sheet, or with a bank moved up to leave room under it
         shift = BOARD_TOP_MARGIN - board_top * scale if bank else MAT_MM / 2 - (board_top + board_bottom) / 2 * scale
-        cards = "".join(_mat_card(corner, turn, tile_set) for corner, turn in CARD_PLACES) if costs else ""
-        bank_strip = bank_group(tile_set.name) if bank else ""
+        cards = "".join(_mat_card(corner, turn, tile_set, lang, icons) for corner, turn in CARD_PLACES) if costs else ""
+        bank_strip = bank_group(tile_set.name, icons) if bank else ""
         seed = caption[0] if "seed" in elements and len(caption) > 1 else ""
         string = caption[-1] if "str" in elements and caption else ""
         seed_size, seed_baseline, string_size, string_baseline, stack_top = stack_layout(

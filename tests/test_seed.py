@@ -140,3 +140,38 @@ class AddButDoNotChange(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NewFlags(unittest.TestCase):
+    def test_l_and_u_are_read_and_written_in_their_place(self):
+        code = parse_seed_code("kmqxrt-upalr")
+        self.assertEqual((code.desert, code.allow_adjacent_red, code.allow_adjacent_low_high, code.no_same_neighbours, code.ports),
+                         ("ring", True, True, True, True))
+        self.assertEqual(format_seed_code(code), "KMQXRT-RALUP")          # desert, A, L, U, P
+        self.assertEqual(format_seed_code(parse_seed_code("KMQXRT-U")), "KMQXRT-U")
+        self.assertEqual(format_seed_code(parse_seed_code("KMQXRT-LU")), "KMQXRT-LU")
+
+    def test_every_combination_round_trips(self):
+        for desert in (None, "free", "edge", "inner", "ring"):
+            for adjacent in (False, True):
+                for low_high in (False, True):
+                    for unlike in (False, True):
+                        for ports in (False, True):
+                            code = SeedCode("ABCDEF", desert, adjacent, ports, low_high, unlike)
+                            self.assertEqual(parse_seed_code(format_seed_code(code)), code)
+
+    def test_a_repeated_flag_is_an_error(self):
+        for text in ("KMQXRT-LL", "KMQXRT-UU", "KMQXRT-LUL"):
+            with self.assertRaises(SeedError):
+                parse_seed_code(text)
+
+    def test_options_add_but_do_not_change(self):
+        code = combine(parse_seed_code("KMQXRT"), allow_adjacent_low_high=True, no_same_neighbours=True)
+        self.assertEqual(str(code), "KMQXRT-LU")
+        self.assertEqual(combine(parse_seed_code("KMQXRT-LU")), parse_seed_code("KMQXRT-LU"))
+        self.assertEqual(str(combine(parse_seed_code("KMQXRT-L"), no_same_neighbours=True)), "KMQXRT-LU")
+
+    def test_the_unknown_flag_message_lists_them(self):
+        with self.assertRaises(SeedError) as caught:
+            parse_seed_code("KMQXRT-Z")
+        self.assertIn("L, U", str(caught.exception))

@@ -8,8 +8,10 @@ whole string::
     KMQXRT-F          the desert anywhere                         (F, E, I, C or R: one of them)
     KMQXRT-E          the desert may only be on the edge
     KMQXRT-A          adjacent 6 and 8 allowed
+    KMQXRT-L          the 2 and the 12 may touch (they may not, by default)
+    KMQXRT-U          no two neighbouring tiles of the same terrain
     KMQXRT-P          the string includes the ports
-    KMQXRT-RAP        several: the desert letter, then A, then P
+    KMQXRT-RALUP      several: the desert letter, then A, L, U, then P
 
 Each flag letter means one thing and appears at most once, so when a code is read the order
 of the flags does not matter, and when it is written the order is always the one above.
@@ -32,6 +34,8 @@ DESERT_FLAGS = {"free": "F", "edge": "E", "inner": "I", "center": "C", "ring": "
 DEFAULT_DESERT = "center"
 _FLAG_DESERT = {letter: zone for zone, letter in DESERT_FLAGS.items()}
 ADJACENT_FLAG = "A"
+LOW_HIGH_FLAG = "L"      # allow the 2 and the 12 to touch
+UNLIKE_FLAG = "U"        # no two neighbouring tiles of the same terrain
 PORTS_FLAG = "P"
 _DESERT_PHRASES = {
     "free": "anywhere (F)",
@@ -52,6 +56,8 @@ class SeedCode:
     desert: Optional[str] = None             # None means the default (the center), else a zone name
     allow_adjacent_red: bool = False
     ports: bool = False
+    allow_adjacent_low_high: bool = False
+    no_same_neighbours: bool = False
 
     def __str__(self):
         return format_seed_code(self)
@@ -82,7 +88,7 @@ def parse_seed_code(text):
     flags = flag_text.upper()
     if not flags:
         raise SeedError("there is nothing after the '-' in the seed code")
-    desert, adjacent, ports = None, False, False
+    desert, adjacent, ports, low_high, unlike = None, False, False, False, False
     seen = set()
     for letter in flags:
         if letter in seen:
@@ -96,13 +102,17 @@ def parse_seed_code(text):
             desert = _FLAG_DESERT[letter]
         elif letter == ADJACENT_FLAG:
             adjacent = True
+        elif letter == LOW_HIGH_FLAG:
+            low_high = True
+        elif letter == UNLIKE_FLAG:
+            unlike = True
         elif letter == PORTS_FLAG:
             ports = True
         else:
             raise SeedError(
-                f"unknown flag {letter!r} in the seed code; the flags are F, E, I, C, R (desert), A and P"
+                f"unknown flag {letter!r} in the seed code; the flags are F, E, I, C, R (desert), A, L, U and P"
             )
-    return SeedCode(seed, desert, adjacent, ports)
+    return SeedCode(seed, desert, adjacent, ports, low_high, unlike)
 
 
 def format_seed_code(code):
@@ -113,6 +123,10 @@ def format_seed_code(code):
         flags += DESERT_FLAGS[code.desert]
     if code.allow_adjacent_red:
         flags += ADJACENT_FLAG
+    if code.allow_adjacent_low_high:
+        flags += LOW_HIGH_FLAG
+    if code.no_same_neighbours:
+        flags += UNLIKE_FLAG
     if code.ports:
         flags += PORTS_FLAG
     return code.seed + ("-" + flags if flags else "")
@@ -125,13 +139,13 @@ def random_seed(length=SEED_LENGTH):
     return "".join(secrets.SystemRandom().sample(string.ascii_uppercase, length))
 
 
-def combine(code, desert=None, allow_adjacent_red=False, ports=False):
+def combine(code, desert=None, allow_adjacent_red=False, ports=False, allow_adjacent_low_high=False, no_same_neighbours=False):
     """The seed code together with options given separately (for instance on the command
     line). An option may *add* something the code does not say, but it may not *change* what
     the code says: that raises SeedError.
 
     `desert` is None (not given) or a zone name ("free", "edge", "inner", "center", "ring"). A
-    code without a desert letter says nothing about the desert, so the default (the center) applies. `allow_adjacent_red` and `ports` can only be switched on, so
+    code without a desert letter says nothing about the desert, so the default (the center) applies. `allow_adjacent_red`, `allow_adjacent_low_high`, `no_same_neighbours` and `ports` can only be switched on, so
     they cannot contradict a code."""
     if code.desert is not None and desert is not None and desert != code.desert:
         raise SeedError(
@@ -146,4 +160,6 @@ def combine(code, desert=None, allow_adjacent_red=False, ports=False):
         final_desert,
         code.allow_adjacent_red or allow_adjacent_red,
         code.ports or ports,
+        code.allow_adjacent_low_high or allow_adjacent_low_high,
+        code.no_same_neighbours or no_same_neighbours,
     )

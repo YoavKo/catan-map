@@ -58,6 +58,14 @@ class MakingABoard(unittest.TestCase):
         self.assertIn("|", out)
         self.assertEqual(run("--seed", "KMQXRT", "--pipes")[0], 2)      # the old flag is gone
 
+    def test_the_new_rule_options(self):
+        code, out, _ = run("--seed", "KMQXRT", "--no-same-neighbours", "--allow-adjacent-2-12", "--no-pipes")
+        self.assertEqual(code, 0)
+        self.assertIn("seed:   KMQXRT-LU\n", out)
+        self.assertEqual(out.split("string: ")[1].strip(), serialize(generate("KMQXRT", no_same_neighbours=True, allow_adjacent_low_high=True), "p"))
+        self.assertIn("seed:   KMQXRT-LU\n", run("--seed", "KMQXRT-L", "--no-same-neighbours")[1])
+        self.assertEqual(run("--string", BASE, "--no-same-neighbours")[0], 2)
+
     def test_formats_and_pipes(self):
         board = generate("KMQXRT")
         for flag, fmt in (("s", "s"), ("sections", "s"), ("p", "p"), ("paired", "p")):

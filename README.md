@@ -30,7 +30,7 @@ The standard island: 19 land tiles in rows of 3, 4, 5, 4 and 3, scanned left to 
 - **Number tokens:** `2 3 4 5 6 8 9 a b c`, where `a` is 10, `b` is 11 and `c` is 12 (there is no 7): one `2`, one `c`, two of each of the others. The desert has no token.
 - **Ports:** 9 of them, four 3:1 and one 2:1 for each resource, on the ring of 18 sea tiles around the island.
 
-By default a **6 or 8 never touches another 6 or 8**, and the **2 and the 12 (`c`) never touch each other**; the second rule always applies, the first can be switched off with the `A` flag.
+By default a **6 or 8 never touches another 6 or 8**, and the **2 and the 12 (`c`) never touch each other**; the `A` flag allows touching 6 and 8, and the `L` flag allows touching 2 and 12. Another rule, off by default, is **no two neighbouring tiles of the same terrain** (the `U` flag).
 
 ## The string
 
@@ -73,8 +73,10 @@ A **seed** is letters only (A-Z), case-insensitive, 1 to 32 letters; a random on
 KMQXRT        all defaults (desert in the center)
 KMQXRT-E      desert on the edge          (F free, E edge, I inner, C center, R ring: only one; the default is C, so it is not written)
 KMQXRT-A      adjacent 6/8 allowed
+KMQXRT-L      the 2 and the 12 may touch (they may not, by default)
+KMQXRT-U      no two neighbouring tiles of the same terrain (allowed, by default)
 KMQXRT-P      the string includes ports
-KMQXRT-RAP    several: the desert letter, then A, then P
+KMQXRT-RALUP  several: the desert letter, then A, L, U, then P
 ```
 
 The flag letters are unique, so their **order does not matter** when reading; a code is always written in the order above. A command-line option may **add** an option the code does not mention (`--seed KMQXRT --desert edge` is `KMQXRT-E`), but it may **not change** one the code states: that is an error.
@@ -92,13 +94,17 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--color` | colours in the drawing |
 | `--elements [NAMES]` | make the SVG a printable 60 x 60 cm sheet (the board 550 x 505 mm, the number tokens 25 mm across) with these things on it, separated by spaces or commas: `costs` (a Building Costs card in each corner), `bank` (places for the bank along the bottom; the island moves up), `seed` (the seed code, big), `str` (the string, on one line), `logo` (the `--logo-img` image, as large as fits). `all` means all of them; no names means the bare sheet. Needs `--svg` |
 | `--logo-img FILE` | the image (png, jpg, gif, webp or svg) for the `logo` element, embedded in the SVG. Needs `--svg` and `--elements` with `logo` |
+| `--icons simple\|detailed\|realistic` | the small resource icons (ports, cost cards, bank); realistic is the default. Needs `--svg` |
+| `--lang he\|en` | the language of the Building Costs cards: Hebrew (default) or English. Needs `--svg` |
 | `--tiles basic\|realistic\|plain` | the look of the tiles in the SVG: `basic` (flat colours, simple shapes), `realistic` (painted-looking, the default) or `plain` (one colour per tile). Needs `--svg` |
 | `--svg FILE` | write the board as an SVG image (`-` prints it to the terminal; the seed and string go to stderr) |
 | `--ascii` | draw with plain ASCII (this happens by itself on a console that cannot show the arrows) |
 | `--desert free\|edge\|inner\|center\|ring` | where the desert is: the middle tile (default), anywhere, the 12 tiles on the coast, the 7 that do not touch the sea, or the 6 around the middle |
-| `--allow-adjacent-red` | allow a 6 or 8 next to another 6 or 8 |
+| `--allow-adjacent-red` | allow a 6 or 8 next to another 6 or 8 (`A`) |
+| `--allow-adjacent-2-12` | allow the 2 and the 12 next to each other (`L`; they never touch by default) |
+| `--no-same-neighbours` | no two neighbouring tiles of the same terrain (`U`; off by default) |
 
-`-h` or `--help` lists all the options. `--desert` and `--allow-adjacent-red` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch, or whose 2 and 12 touch, is accepted, with a warning on stderr. So is a string with a non-standard mix of tiles, tokens or ports (18 wood, no desert, ...): it only needs 19 tiles, a token for every tile but the desert, and 9 ports if it has any.
+`-h` or `--help` lists all the options. `--desert`, `--allow-adjacent-red`, `--allow-adjacent-2-12` and `--no-same-neighbours` only apply to a board made from a seed. Exit code 0 on success, 2 on bad input (the reason is printed to stderr). A string whose 6 and 8 touch, or whose 2 and 12 touch, is accepted, with a warning on stderr. So is a string with a non-standard mix of tiles, tokens or ports (18 wood, no desert, ...): it only needs 19 tiles, a token for every tile but the desert, and 9 ports if it has any.
 
 ### The drawing
 
@@ -164,11 +170,19 @@ Six A4 pages cannot hold 60 cm at real size (2 pages of 29.7 cm are 59.4 cm, and
 
 Only `random.Random.random()` is used, with a hand-written Fisher-Yates shuffle. Python guarantees the sequence of `random()` for a given seed, but not the algorithm of `shuffle`, so a seed gives the same board forever. The seed text is hashed (`sha256("catan-map-v1:" + SEED)`) into the generator's seed. The draws are made in a fixed order, and the ports come last, so asking for ports never changes the tiles or the tokens of a seed:
 
-1. the desert's position among the tiles its option allows, then the other 18 tiles shuffled over the rest;
-2. the tokens, reshuffled until no 6 or 8 touches another (unless allowed) and the 2 and 12 do not touch;
+1. the desert's position among the tiles its option allows, then the other 18 tiles shuffled over the rest (with `U`, placed one by one so that no neighbours match: a shuffle with no matching neighbours is about 1 in 1,300, too rare to wait for);
+2. the tokens, reshuffled until no 6 or 8 touches another (unless allowed) and the 2 and 12 do not touch (unless allowed);
 3. the ports: whether the ring is shifted, a shuffle of the nine types, then the orientation of each port that is not on a corner.
 
 `tests/test_golden.py` holds fixed seeds with their exact strings; if one fails, the generator changed, which would break every seed anyone has shared.
+
+## The icons
+
+The small resource icons (on the port badges, the cost cards and the bank slots) come in three sets (`catan_map/icons.py`): `simple` (flat, the first look), `detailed` (flat, more shapes) and **`realistic`** (painted-looking, the default). `--icons simple|detailed|realistic` chooses (with `--svg`), and `render_svg(..., icons="simple")` in Python. The realistic gradients are defined once in the drawing, however many icons use them; the realistic set adds about 140 KB to a sheet. `docs/icons-comparison.svg` (made by `python scripts/make_icon_comparison.py`) shows the three sets side by side.
+
+## Ideas for later
+
+Bigger boards (5-6 players), Cities & Knights and Seafarers are not built; what each would change, the order to do them in and the open questions are in [`docs/IDEAS.md`](docs/IDEAS.md).
 
 ## Layout
 

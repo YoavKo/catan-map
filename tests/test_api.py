@@ -17,6 +17,14 @@ class Make(unittest.TestCase):
         with self.assertRaises(SeedError):
             make("KMQXRT-E", desert="inner")
 
+    def test_the_new_options(self):
+        self.assertEqual(str(make("KMQXRT", allow_adjacent_low_high=True, no_same_neighbours=True).code), "KMQXRT-LU")
+        self.assertEqual(make("KMQXRT", no_same_neighbours=True).board, generate("KMQXRT", no_same_neighbours=True))
+        with self.assertRaises(CatanMapError):
+            make(string="WSGOCWSGDOWCSGOCWSG563a4b892c563b9a48", no_same_neighbours=True)
+        with self.assertRaises(CatanMapError):
+            make(string="WSGOCWSGDOWCSGOCWSG563a4b892c563b9a48", allow_adjacent_low_high=True)
+
     def test_the_format_and_the_pipes(self):
         self.assertEqual(make("KMQXRT", fmt="s", pipes=False).text, serialize(generate("KMQXRT"), "s"))
         self.assertEqual(make("KMQXRT", fmt="paired", pipes=False).text, serialize(generate("KMQXRT"), "p"))
