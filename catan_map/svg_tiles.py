@@ -1,20 +1,20 @@
 """The tile sets, the ports, and a preview of them.
 
 A tile set (see tiles_common.TileSet) is chosen by name: "classic" (pictures of the tiles, the
-default), "victory" (painted-looking), "textures" (a pattern of lines on each tile) or "plain" (one flat colour per tile). `tile_defs()`
+default), "vector" (painted-looking), "textures" (a pattern of lines on each tile) or "plain" (one flat colour per tile). `tile_defs()`
 returns the ``<defs>`` block of a set: one ``<symbol>`` per land tile (``tile-W`` ... ``tile-D``),
 the sea (``sea``) and the pier (``dock``), which a board drawing places with ``<use>``.
 """
 from __future__ import annotations
 
-from . import tiles_classic, tiles_plain, tiles_textures, tiles_victory
+from . import tiles_classic, tiles_plain, tiles_textures, tiles_vector
 from .codec import CatanMapError
 from .icons import DEFAULT_ICON_SET, ICON_DEFS, ICON_SETS, check_icon_set
 from .tiles_common import BORDER, BORDER_WIDTH, HALF_WIDTH, HEX_POINTS, OUTLINE, RADIUS, TileSet, edge_symbols
 
 __all__ = ["DEFAULT_TILE_SET", "TILE_SET_NAMES", "get_tile_set", "tile_defs", "port_group", "preview_svg", "resource_icon", "bare_icon"]
 
-_BUILDERS = {"classic": tiles_classic.build, "victory": tiles_victory.build, "plain": tiles_plain.build,
+_BUILDERS = {"classic": tiles_classic.build, "vector": tiles_vector.build, "plain": tiles_plain.build,
              "textures": tiles_textures.build}
 TILE_SET_NAMES = tuple(_BUILDERS)
 DEFAULT_TILE_SET = "classic"

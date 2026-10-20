@@ -1,4 +1,4 @@
-"""The "victory" tile set: painted-looking tiles.
+"""The "vector" tile set: painted-looking tiles.
 
 Gradients for light and shade, many small shapes (trees, stalks, rocks, tufts) scattered in a
 fixed order, and a fine grain on top. The scattering uses a random generator with a fixed
@@ -424,6 +424,6 @@ def build():
         for letter in "WSGCOD"
     )
     return TileSet(
-        "victory", "painted-looking tiles with light, shade and texture", symbols, _sea(), _shared_defs(),
+        "vector", "painted-looking tiles with light, shade and texture", symbols, _sea(), _shared_defs(),
         {letter: GROUND[letter][0] for letter in "WSGCOD"}, token_fill="url(#token-face)", shadows=True,
     )

@@ -97,7 +97,7 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--desert-logo FILE` | an image (png, jpg, gif, webp or svg) for the middle of the desert tile, the size of a number token (25 mm on a sheet), embedded in the SVG. Needs `--svg` |
 | `--icons simple\|detailed\|realistic` | the small resource icons (ports, cost cards, bank); realistic is the default. Needs `--svg` |
 | `--lang he\|en` | the language of the Building Costs cards: Hebrew (default) or English. Needs `--svg` |
-| `--tiles classic\|victory\|plain\|textures` | the look of the tiles in the SVG: `classic` (pictures of the tiles, each with its own border; the default), `victory` (painted-looking), `plain` (one colour per tile) or `textures` (a pattern of lines and shapes on each tile: trees, sheep, stalks, a brick wall, round stones, dunes; easy to tell apart when printed in grey). Needs `--svg` |
+| `--tiles classic\|vector\|plain\|textures` | the look of the tiles in the SVG: `classic` (pictures of the tiles, each with its own border; the default), `vector` (painted-looking), `plain` (one colour per tile) or `textures` (a pattern of lines and shapes on each tile: trees, sheep, stalks, a brick wall, round stones, dunes; easy to tell apart when printed in grey). Needs `--svg` |
 | `--svg FILE` | write the board as an SVG image (`-` prints it to the terminal; the seed and string go to stderr) |
 | `--ascii` | draw with plain ASCII (this happens by itself on a console that cannot show the arrows) |
 | `--desert free\|edge\|inner\|center\|ring` | where the desert is: the middle tile (default), anywhere, the 12 tiles on the coast, the 7 that do not touch the sea, or the 6 around the middle |
@@ -150,7 +150,7 @@ print(render_board(board, ascii_only=True))
 from catan_map import make, render_svg
 
 made = make("KMQXRT", ports=True)                   # made.board, made.code, made.text, made.warnings, made.caption
-svg = render_svg(made.board, made.caption, "victory", elements=("costs", "seed", "str"))
+svg = render_svg(made.board, made.caption, "vector", elements=("costs", "seed", "str"))
 ```
 
 `generate` takes a seed or a `SeedCode`; `parse_seed_code`, `format_seed_code` and `combine` handle seed codes; every error derives from `CatanMapError`.

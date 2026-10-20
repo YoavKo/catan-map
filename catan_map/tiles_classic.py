@@ -1,11 +1,11 @@
 """The "classic" tile set: the six land tiles are pictures (assets/classic/*.webp, one per tile letter), each with
-its own cream border, so nothing is drawn around them. The sea, the tokens and the ports are those of the victory set."""
+its own cream border, so nothing is drawn around them. The sea, the tokens and the ports are those of the vector set."""
 from __future__ import annotations
 
 import base64
 from pathlib import Path
 
-from . import tiles_victory
+from . import tiles_vector
 from .tiles_common import HALF_WIDTH, RADIUS, TileSet
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "classic"
@@ -25,7 +25,7 @@ def _symbol(letter):
 
 
 def build():
-    base = tiles_victory.build()
+    base = tiles_vector.build()
     return TileSet(
         "classic", "pictures of the tiles, each with its own border", tuple(_symbol(letter) for letter in "WSGCOD"),
         base.sea, base.defs, base.ground, token_fill=base.token_fill, shadows=base.shadows, own_edges=True,

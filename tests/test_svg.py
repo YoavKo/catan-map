@@ -67,7 +67,7 @@ class RenderSvg(unittest.TestCase):
         texts = {name: render_svg(self.board, tiles=name) for name in TILE_SET_NAMES}
         self.assertEqual(len(set(texts.values())), 4)
         self.assertEqual(render_svg(self.board), texts["classic"])
-        self.assertLess(len(texts["plain"]), len(texts["victory"]))
+        self.assertLess(len(texts["plain"]), len(texts["vector"]))
 
     def test_an_unknown_tile_set(self):
         with self.assertRaises(CatanMapError):
@@ -204,7 +204,7 @@ class Logo(unittest.TestCase):
             self.assertLessEqual(len(seed) * 0.6 * seed_size(seed), 97.5)         # never wider than the space above the card
 
     def test_without_a_logo_there_is_no_image(self):
-        self.assertNotIn("<image", render_svg(generate("KMQXRT"), tiles="victory", elements=("costs", "seed")))
+        self.assertNotIn("<image", render_svg(generate("KMQXRT"), tiles="vector", elements=("costs", "seed")))
 
     def test_a_missing_or_unsupported_logo_is_an_error(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -502,7 +502,7 @@ class CommandLine(unittest.TestCase):
 
     def test_tiles_option(self):
         outputs = {}
-        for name in ("classic", "victory", "plain", "textures"):
+        for name in ("classic", "vector", "plain", "textures"):
             code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", name)
             self.assertEqual(code, 0)
             ET.fromstring(out)
