@@ -63,11 +63,11 @@ class RenderSvg(unittest.TestCase):
             root = ET.fromstring(render_svg(self.board, tiles=name))
             self.assertEqual(len(uses(root, "#tile-")), 19, name)
 
-    def test_the_sets_look_different_and_the_default_is_realistic(self):
+    def test_the_sets_look_different_and_the_default_is_classic(self):
         texts = {name: render_svg(self.board, tiles=name) for name in TILE_SET_NAMES}
-        self.assertEqual(len(set(texts.values())), 4)
-        self.assertEqual(render_svg(self.board), texts["realistic"])
-        self.assertLess(len(texts["plain"]), len(texts["basic"]))
+        self.assertEqual(len(set(texts.values())), 3)
+        self.assertEqual(render_svg(self.board), texts["classic"])
+        self.assertLess(len(texts["plain"]), len(texts["victory"]))
 
     def test_an_unknown_tile_set(self):
         with self.assertRaises(CatanMapError):
@@ -204,7 +204,7 @@ class Logo(unittest.TestCase):
             self.assertLessEqual(len(seed) * 0.6 * seed_size(seed), 97.5)         # never wider than the space above the card
 
     def test_without_a_logo_there_is_no_image(self):
-        self.assertNotIn("<image", render_svg(generate("KMQXRT"), elements=("costs", "seed")))
+        self.assertNotIn("<image", render_svg(generate("KMQXRT"), tiles="victory", elements=("costs", "seed")))
 
     def test_a_missing_or_unsupported_logo_is_an_error(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -409,7 +409,8 @@ class DesertLogo(unittest.TestCase):
         root = ET.fromstring(render_svg(self.board, elements=(), desert_logo=self.URI))
         board = next(g for g in root.findall("s:g", NS) if g.find("s:g", NS) is not None and g.find("s:g", NS).get("id") == "water")
         scale = float(re.search(r"scale\(([\d.]+)\)", board.get("transform")).group(1))
-        image = next(i for i in root.iter("{http://www.w3.org/2000/svg}image"))
+        group = next(g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("id") == "desert-logo")
+        image = group.find("s:image", NS)
         self.assertAlmostEqual(float(image.get("width")) * scale, 60, delta=0.1)
 
     def test_it_follows_the_desert_wherever_it_is(self):
@@ -501,13 +502,13 @@ class CommandLine(unittest.TestCase):
 
     def test_tiles_option(self):
         outputs = {}
-        for name in ("basic", "realistic", "plain"):
+        for name in ("classic", "victory", "plain"):
             code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", name)
             self.assertEqual(code, 0)
             ET.fromstring(out)
             outputs[name] = out
         self.assertEqual(len(set(outputs.values())), 3)
-        self.assertEqual(run("--seed", "KMQXRT", "--svg", "-")[1], outputs["realistic"])
+        self.assertEqual(run("--seed", "KMQXRT", "--svg", "-")[1], outputs["classic"])
 
     def test_tiles_needs_svg(self):
         for flag in (["--tiles", "plain"], ["--elements"], ["--elements", "costs"]):
@@ -601,9 +602,9 @@ class GoldFrame(unittest.TestCase):
         self.assertNotIn('id="frame"', render_svg(generate("KMQXRT")))
 
 
-class IllustratedTiles(unittest.TestCase):
+class ClassicTiles(unittest.TestCase):
     def test_the_tiles_are_pictures_with_their_own_border(self):
-        svg = render_svg(generate("KMQXRT"), tiles="illustrated")
+        svg = render_svg(generate("KMQXRT"), tiles="classic")
         root = ET.fromstring(svg)
         symbols = [s for s in root.iter("{http://www.w3.org/2000/svg}symbol") if s.get("id", "").startswith("tile-")]
         self.assertEqual(len(symbols), 6)
@@ -615,14 +616,14 @@ class IllustratedTiles(unittest.TestCase):
         self.assertEqual(len(edges), 0)                                               # no border is drawn round them
 
     def test_it_is_a_tile_set_of_the_command_line(self):
-        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "illustrated")
+        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "classic")
         self.assertEqual(code, 0)
         self.assertIn("data:image/webp;base64", out)
 
 
 class BankPictures(unittest.TestCase):
-    def test_with_the_illustrated_tiles_each_slot_has_its_tile_as_a_background(self):
-        root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",), tiles="illustrated"))
+    def test_with_the_classic_tiles_each_slot_has_its_tile_as_a_background(self):
+        root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",), tiles="classic"))
         slots = [g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("class") == "slot"]
         self.assertEqual(len(slots), 6)
         for slot in slots[:5]:

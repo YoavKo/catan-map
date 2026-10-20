@@ -220,7 +220,7 @@ def _mat_card(corner, turn, tile_set, lang=None, icons=None):
 
 def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=None, icons=None, desert_logo=None):
     """The board as an SVG document (text). `caption` is the seed code and the string (or just
-    the string); `tiles` is the name of the tile set ("basic", "realistic" or "plain"; the
+    the string); `tiles` is the name of the tile set ("classic", "victory" or "plain"; the
     default if None).
 
     With `elements` None the image is the board with the caption under it. With `elements`, a

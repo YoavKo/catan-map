@@ -1,23 +1,22 @@
 """The tile sets, the ports, and a preview of them.
 
-A tile set (see tiles_common.TileSet) is chosen by name: "basic" (flat colours and simple
-shapes), "realistic" (painted-looking) or "plain" (one flat colour per tile). `tile_defs()`
+A tile set (see tiles_common.TileSet) is chosen by name: "classic" (pictures of the tiles, the
+default), "victory" (painted-looking) or "plain" (one flat colour per tile). `tile_defs()`
 returns the ``<defs>`` block of a set: one ``<symbol>`` per land tile (``tile-W`` ... ``tile-D``),
 the sea (``sea``) and the pier (``dock``), which a board drawing places with ``<use>``.
 """
 from __future__ import annotations
 
-from . import tiles_basic, tiles_illustrated, tiles_plain, tiles_realistic
+from . import tiles_classic, tiles_plain, tiles_victory
 from .codec import CatanMapError
 from .icons import DEFAULT_ICON_SET, ICON_DEFS, ICON_SETS, check_icon_set
 from .tiles_common import BORDER, BORDER_WIDTH, HALF_WIDTH, HEX_POINTS, OUTLINE, RADIUS, TileSet, edge_symbols
 
 __all__ = ["DEFAULT_TILE_SET", "TILE_SET_NAMES", "get_tile_set", "tile_defs", "port_group", "preview_svg", "resource_icon", "bare_icon"]
 
-_BUILDERS = {"basic": tiles_basic.build, "realistic": tiles_realistic.build, "plain": tiles_plain.build,
-             "illustrated": tiles_illustrated.build}
+_BUILDERS = {"classic": tiles_classic.build, "victory": tiles_victory.build, "plain": tiles_plain.build}
 TILE_SET_NAMES = tuple(_BUILDERS)
-DEFAULT_TILE_SET = "realistic"
+DEFAULT_TILE_SET = "classic"
 _cache = {}
 
 # the ring of a clay chip or badge is brick red, whatever the colour of the clay tile
@@ -37,20 +36,6 @@ def get_tile_set(name=None):
 
 # where each way lies from a sea tile, as a rotation in degrees (SVG turns clockwise)
 WAY_ANGLES = {"E": 0, "SE": 60, "SW": 120, "W": 180, "NW": 240, "NE": 300}
-
-
-def _sea_symbol():
-    waves = "".join(
-        f'<path d="M{x},{y} q6,-7 12,0 t12,0" stroke="{SEA["wave"]}" stroke-width="3" fill="none" stroke-linecap="round"/>'
-        for x, y in ((-60, -42), (22, -58), (-26, 62), (46, 38), (-68, 18))
-    )
-    return (
-        f'<symbol id="sea" overflow="visible">'
-        f'<clipPath id="clip-sea"><polygon points="{HEX_POINTS}"/></clipPath>'
-        f'<polygon points="{HEX_POINTS}" fill="{SEA["ground"]}" stroke="{SEA["ground"]}" stroke-width="1.5"/>'
-        f'<g clip-path="url(#clip-sea)">{waves}</g>'
-        f'<title>sea</title></symbol>'
-    )
 
 
 def _dock_symbol():
