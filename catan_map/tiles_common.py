@@ -7,7 +7,7 @@ how the number tokens are painted. The board drawing and the ports are the same 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 RADIUS = 100
 HALF_WIDTH = 86.603   # RADIUS * sqrt(3) / 2
@@ -29,6 +29,7 @@ class TileSet:
     ground: Dict[str, str]       # the main colour of each tile, W S G C O D (the ring of a port badge)
     token_fill: str = "#f6f0dc"  # the face of a number token
     shadows: bool = False        # whether tokens and port badges cast a small shadow
+    dock: Optional[Dict[str, str]] = None   # the colours of the piers of a port (plank, line, post); None: the usual ones
     own_edges: bool = False      # the tiles are pictures that carry their own border: no border is drawn round them
 
 

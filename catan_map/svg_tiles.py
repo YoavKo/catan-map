@@ -39,15 +39,16 @@ def get_tile_set(name=None):
 WAY_ANGLES = {"E": 0, "SE": 60, "SW": 120, "W": 180, "NW": 240, "NE": 300}
 
 
-def _dock_symbol():
+def _dock_symbol(colours=None):
     """Two piers from the middle of the tile to the two corners of its east edge."""
+    colours = colours or DOCK
     corners = ((HALF_WIDTH, -50), (HALF_WIDTH, 50))
     piers = "".join(
-        f'<line x1="0" y1="0" x2="{x}" y2="{y}" stroke="{DOCK["line"]}" stroke-width="14" stroke-linecap="butt"/>'
-        f'<line x1="0" y1="0" x2="{x}" y2="{y}" stroke="{DOCK["plank"]}" stroke-width="9" stroke-linecap="butt"/>'
+        f'<line x1="0" y1="0" x2="{x}" y2="{y}" stroke="{colours["line"]}" stroke-width="14" stroke-linecap="butt"/>'
+        f'<line x1="0" y1="0" x2="{x}" y2="{y}" stroke="{colours["plank"]}" stroke-width="9" stroke-linecap="butt"/>'
         for x, y in corners
     )
-    posts = "".join(f'<circle cx="{x}" cy="{y}" r="6" fill="{DOCK["post"]}"/>' for x, y in corners)
+    posts = "".join(f'<circle cx="{x}" cy="{y}" r="6" fill="{colours["post"]}"/>' for x, y in corners)
     return f'<symbol id="dock" overflow="visible">{piers}{posts}</symbol>'
 
 
@@ -105,7 +106,7 @@ def port_group(kind, way, x=0, y=0, tiles=None, icons=None):
 
 def tile_defs(tiles=None, icons=None):
     tile_set = get_tile_set(tiles)
-    return "<defs>" + ICON_DEFS[check_icon_set(icons)] + tile_set.defs + edge_symbols() + "".join(tile_set.symbols) + tile_set.sea + _dock_symbol() + "</defs>"
+    return "<defs>" + ICON_DEFS[check_icon_set(icons)] + tile_set.defs + edge_symbols() + "".join(tile_set.symbols) + tile_set.sea + _dock_symbol(tile_set.dock) + "</defs>"
 
 
 def preview_svg(tiles=None, icons=None):

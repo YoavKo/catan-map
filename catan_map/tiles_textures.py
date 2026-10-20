@@ -1,6 +1,6 @@
 """The "textures" tile set: each tile is filled with a pattern of lines or shapes, so that the tiles can be told apart
 when the sheet is printed in grey: trees for wood, dots for sheep, diagonal stalks for wheat, a brick wall for clay,
-round stones for ore, dune lines for the desert. No fonts and no external files."""
+round stones for ore; the desert is one flat colour, and the piers of the ports are black. No fonts and no external files."""
 from __future__ import annotations
 
 from .board import RESOURCE_NAMES
@@ -33,10 +33,10 @@ _PATTERNS = {
           '<g fill="#c6cdd4" stroke="#33404c" stroke-width="2"><circle cx="11" cy="11" r="8"/><circle cx="33" cy="17" r="6"/>'
           '<circle cx="19" cy="31" r="7"/><circle cx="40" cy="36" r="4"/><circle cx="3" cy="35" r="4"/></g>'
           '<g fill="none" stroke="#33404c" stroke-width="1.4"><circle cx="11" cy="11" r="3.2"/><circle cx="19" cy="31" r="2.8"/></g>'),
-    # dunes: long flat waves
-    "D": (60, 18,
-          '<path d="M0,9 q15,-8 30,0 t30,0" stroke="#c9a864" stroke-width="1.8" fill="none"/>'),
 }
+
+
+BLACK_DOCK = {"plank": "#111111", "line": "#111111", "post": "#111111"}
 
 
 def _pattern(letter):
@@ -46,14 +46,14 @@ def _pattern(letter):
 
 
 def build():
-    defs = "".join(_pattern(letter) for letter in "WSGCOD")
+    defs = "".join(_pattern(letter) for letter in "WSGCO")
     symbols = tuple(
         symbol(letter, RESOURCE_NAMES.get(letter, "desert"), GROUND[letter],
-               f'<rect x="-100" y="-100" width="200" height="200" fill="url(#tx-{letter})"/>')
+               f'<rect x="-100" y="-100" width="200" height="200" fill="url(#tx-{letter})"/>' if letter in _PATTERNS else "")
         for letter in "WSGCOD"
     )
     sea = (
         f'<symbol id="sea" overflow="visible"><polygon points="{HEX_POINTS}" fill="{SEA_GROUND}" stroke="{SEA_GROUND}" stroke-width="1.5"/>'
         f'<title>sea</title></symbol>'
     )
-    return TileSet("textures", "a pattern of lines and shapes on each tile, easy to tell apart in grey", symbols, sea, defs, dict(GROUND))
+    return TileSet("textures", "a pattern of lines and shapes on each tile, easy to tell apart in grey", symbols, sea, defs, dict(GROUND), dock=BLACK_DOCK)

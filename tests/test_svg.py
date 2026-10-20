@@ -643,9 +643,10 @@ class TexturesTiles(unittest.TestCase):
         svg = render_svg(generate("KMQXRT"), tiles="textures")
         root = ET.fromstring(svg)
         patterns = {p.get("id") for p in root.iter("{http://www.w3.org/2000/svg}pattern")}
-        self.assertEqual(patterns, {f"tx-{c}" for c in "WSGCOD"})                  # and the sea is one flat colour
-        for letter in "WSGCOD":
+        self.assertEqual(patterns, {f"tx-{c}" for c in "WSGCO"})                   # the desert and the sea are one flat colour
+        for letter in "WSGCO":
             self.assertIn(f'fill="url(#tx-{letter})"', svg)
+        self.assertNotIn("tx-D", svg)
 
     def test_the_brick_tile_has_a_wall_and_the_ore_tile_has_circles(self):
         from catan_map.tiles_textures import _PATTERNS
@@ -664,3 +665,12 @@ class SeaColour(unittest.TestCase):
         from catan_map.svg_tiles import tile_defs
         sea = re.search(r'<symbol id="sea".*?</symbol>', tile_defs("textures"), re.S).group(0)
         self.assertIn(f'fill="{SEA}"', sea)
+
+
+class BlackPiers(unittest.TestCase):
+    def test_the_piers_of_the_textures_set_are_black_and_the_others_are_not(self):
+        from catan_map.svg_tiles import tile_defs
+        dock = lambda name: re.search(r'<symbol id="dock".*?</symbol>', tile_defs(name), re.S).group(0)
+        self.assertNotIn("#b98a58", dock("textures"))
+        self.assertIn("#111111", dock("textures"))
+        self.assertIn("#b98a58", dock("classic"))
