@@ -630,8 +630,8 @@ class BankPictures(unittest.TestCase):
             self.assertEqual(slot.find(".//s:use", NS).get("href"), f"#tile-{kind}")      # under the icon, which is drawn after it
         self.assertIsNone(slots[5].find(".//s:use", NS))                                  # the development cards keep their plain slot
 
-    def test_the_other_tile_sets_have_the_same_pictures_in_their_slots(self):
-        for name in ("realistic", "basic", "plain"):
-            svg = render_svg(generate("KMQXRT"), elements=("bank",), tiles=name)
-            self.assertEqual(svg.count("bank-clip-"), 10, name)                           # five clips, each used once
-            self.assertEqual(svg.count("data:image/webp;base64"), 5, name)               # the five pictures, in the slots
+    def test_every_tile_set_uses_its_own_tiles_in_the_slots(self):
+        for name in TILE_SET_NAMES:
+            root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",), tiles=name))
+            slots = [g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("class") == "slot"]
+            self.assertEqual([s.find(".//s:use", NS).get("href") for s in slots[:5]], [f"#tile-{k}" for k in "CWSGO"], name)
