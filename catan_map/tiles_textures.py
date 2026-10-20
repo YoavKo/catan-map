@@ -7,7 +7,8 @@ from .board import RESOURCE_NAMES
 from .tiles_common import HEX_POINTS, TileSet, symbol
 
 GROUND = {"W": "#3c7a45", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#9aa4ae", "D": "#f1e2b6"}
-SEA_GROUND, SEA_LINE = "#bfe0f5", "#4f98cf"
+SEA_GROUND = "#bfe0f5"     # the sea is one flat colour
+SCALE = 1.8                # the patterns are drawn this much larger than their drawings below: fewer, bigger lines
 
 # (width, height, drawing) of one repeat of each pattern; the lines are drawn over the ground colour of the tile.
 _PATTERNS = {
@@ -40,14 +41,12 @@ _PATTERNS = {
 
 def _pattern(letter):
     width, height, drawing = _PATTERNS[letter]
-    return f'<pattern id="tx-{letter}" width="{width}" height="{height}" patternUnits="userSpaceOnUse">{drawing}</pattern>'
+    return (f'<pattern id="tx-{letter}" width="{width}" height="{height}" patternUnits="userSpaceOnUse" '
+            f'patternTransform="scale({SCALE})">{drawing}</pattern>')
 
 
 def build():
-    defs = "".join(_pattern(letter) for letter in "WSGCOD") + (
-        f'<pattern id="tx-sea" width="30" height="24" patternUnits="userSpaceOnUse">'
-        f'<path d="M3,8 q6,-7 12,0 t12,0 M-3,20 q6,-7 12,0 t12,0 M15,20 q6,-7 12,0" stroke="{SEA_LINE}" stroke-width="2.2" fill="none" stroke-linecap="round"/></pattern>'
-    )
+    defs = "".join(_pattern(letter) for letter in "WSGCOD")
     symbols = tuple(
         symbol(letter, RESOURCE_NAMES.get(letter, "desert"), GROUND[letter],
                f'<rect x="-100" y="-100" width="200" height="200" fill="url(#tx-{letter})"/>')
@@ -55,6 +54,6 @@ def build():
     )
     sea = (
         f'<symbol id="sea" overflow="visible"><polygon points="{HEX_POINTS}" fill="{SEA_GROUND}" stroke="{SEA_GROUND}" stroke-width="1.5"/>'
-        f'<polygon points="{HEX_POINTS}" fill="url(#tx-sea)"/><title>sea</title></symbol>'
+        f'<title>sea</title></symbol>'
     )
     return TileSet("textures", "a pattern of lines and shapes on each tile, easy to tell apart in grey", symbols, sea, defs, dict(GROUND))

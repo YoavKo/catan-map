@@ -643,7 +643,7 @@ class TexturesTiles(unittest.TestCase):
         svg = render_svg(generate("KMQXRT"), tiles="textures")
         root = ET.fromstring(svg)
         patterns = {p.get("id") for p in root.iter("{http://www.w3.org/2000/svg}pattern")}
-        self.assertEqual(patterns, {f"tx-{c}" for c in "WSGCOD"} | {"tx-sea"})
+        self.assertEqual(patterns, {f"tx-{c}" for c in "WSGCOD"})                  # and the sea is one flat colour
         for letter in "WSGCOD":
             self.assertIn(f'fill="url(#tx-{letter})"', svg)
 
