@@ -529,3 +529,21 @@ class CommandLine(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BankWithoutCosts(unittest.TestCase):
+    URI = "data:image/png;base64," + "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+    def render(self, elements):
+        return ET.fromstring(render_svg(generate("KMQXRT"), ("KMQXRT",), elements=elements, logo=self.URI))
+
+    def test_the_bank_moves_to_the_left_margin_without_the_cost_cards(self):
+        with_costs = render_svg(generate("KMQXRT"), elements=("costs", "bank"))
+        without = render_svg(generate("KMQXRT"), elements=("bank",))
+        self.assertNotIn('<g transform="translate(', with_costs.split('<g class="bank">')[0][-40:])
+        self.assertIn('translate(-79 0)"><g class="bank">', without)
+
+    def test_the_logo_stays_clear_of_the_bank(self):
+        root = self.render(("bank", "logo"))
+        image = next(i for i in root.iter("{http://www.w3.org/2000/svg}image") if i.get("preserveAspectRatio") == "xMaxYMax meet")
+        self.assertGreaterEqual(float(image.get("x")), 5 + 387 + 4)             # right of the bank strip (it ends at 392 mm)

@@ -25,7 +25,7 @@ from .board import (
 from .codec import CatanMapError
 from .imagesize import data_uri_size
 from .icons import check_icon_set
-from .svg_cards import CARD_HEIGHT, CARD_WIDTH, bank_group, building_costs_card, check_language
+from .svg_cards import BANK_BOX, CARD_HEIGHT, CARD_WIDTH, bank_group, building_costs_card, check_language
 from .svg_tiles import get_tile_set, port_group, tile_defs
 from .tiles_common import HALF_WIDTH, OUTLINE, RADIUS
 
@@ -122,10 +122,11 @@ def _island_edge(shift, scale, y):
     return right
 
 
-def fit_logo(aspect, shift, scale, bottom, top_limit=CARD_BOTTOM + LOGO_GAP):
+def fit_logo(aspect, shift, scale, bottom, top_limit=CARD_BOTTOM + LOGO_GAP, bank_right=None):
     """The largest box of the logo's shape (width / height = aspect) that fits in the free corner:
     its right side at the right margin, its bottom at `bottom`, clear of the island and of the
-    top right card. Returns (x, y, width, height) in mm, or None if nothing fits."""
+    top right card, and, if `bank_right` is given (the right end of the bank strip, in mm), of the bank. Returns
+    (x, y, width, height) in mm, or None if nothing fits."""
     right = STACK_RIGHT
     height = bottom - top_limit
     while height >= 10:
@@ -133,6 +134,8 @@ def fit_logo(aspect, shift, scale, bottom, top_limit=CARD_BOTTOM + LOGO_GAP):
         top = bottom - height
         left = right - width
         edge = max(_island_edge(shift, scale, top + step * (height / 40)) for step in range(41))
+        if bank_right is not None and bottom > BANK_BOX[1]:      # the logo reaches down to the bank: stay right of it
+            edge = max(edge, bank_right)
         if left >= edge + LOGO_GAP:
             return left, top, width, height
         height -= 0.5
@@ -260,7 +263,9 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
         # the island is centred on the sheet, or with a bank moved up to leave room under it
         shift = BOARD_TOP_MARGIN - board_top * scale if bank else MAT_MM / 2 - (board_top + board_bottom) / 2 * scale
         cards = "".join(_mat_card(corner, turn, tile_set, lang, icons) for corner, turn in CARD_PLACES) if costs else ""
-        bank_strip = bank_group(tile_set.name, icons) if bank else ""
+        # without the cost cards the bank moves left, to the margin, to leave the corner to the logo
+        bank_dx = 0 if costs else CARD_MARGIN - BANK_BOX[0]
+        bank_strip = f'<g transform="translate({bank_dx} 0)">{bank_group(tile_set.name, icons)}</g>' if bank and bank_dx else (bank_group(tile_set.name, icons) if bank else "")
         seed = caption[0] if "seed" in elements and len(caption) > 1 else ""
         string = caption[-1] if "str" in elements and caption else ""
         seed_size, seed_baseline, string_size, string_baseline, stack_top = stack_layout(
@@ -280,6 +285,7 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
                 fitted = fit_logo(
                     size[0] / size[1], shift, scale, stack_top - LOGO_GAP,
                     CARD_BOTTOM + LOGO_GAP if costs else CARD_MARGIN,
+                    BANK_BOX[0] + BANK_BOX[2] + bank_dx if bank else None,
                 )
                 if fitted:
                     box_x, box_y, box_w, box_h = (round(v, 2) for v in fitted)
