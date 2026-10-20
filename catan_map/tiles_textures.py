@@ -7,16 +7,16 @@ from .board import RESOURCE_NAMES
 from .tiles_common import HEX_POINTS, TileSet, symbol
 from .tiles_plain import SEA as SEA_GROUND   # the sea is the colour of the "plain" set's sea
 
-GROUND = {"W": "#3c7a45", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#9aa4ae", "D": "#f1e2b6"}
+GROUND = {"W": "#2b6336", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#9aa4ae", "D": "#f1e2b6"}
 SCALE = 3.6                # the patterns are drawn this much larger than their drawings below: fewer, bigger lines
 
 # (width, height, drawing) of one repeat of each pattern; the lines are drawn over the ground colour of the tile.
 _PATTERNS = {
     # rows of trees: a dark triangle on a short trunk, the rows shifted by half
     "W": (30, 26,
-          '<g fill="#1d4a28" stroke="#13341c" stroke-width="1"><path d="M7,12 L12,2 L17,12Z"/><path d="M7,18 L12,8 L17,18Z"/>'
+          '<g fill="#a9de7c" stroke="#0e3319" stroke-width="1.2"><path d="M7,12 L12,2 L17,12Z"/><path d="M7,18 L12,8 L17,18Z"/>'
           '<path d="M22,25 L27,15 L32,25Z"/><path d="M-8,25 L-3,15 L2,25Z"/></g>'
-          '<path d="M12,18 v5 M27,25 v1 M-3,25 v1" stroke="#13341c" stroke-width="1.6"/>'),
+          '<path d="M12,18 v5 M27,25 v1 M-3,25 v1" stroke="#0e3319" stroke-width="1.6"/>'),
     # white sheep: round bodies with a dark head, scattered in staggered rows
     "S": (34, 30,
           '<g stroke="#4a4a4a" stroke-width="1"><ellipse cx="9" cy="8" rx="6" ry="4.5" fill="#ffffff"/><circle cx="15" cy="7" r="2" fill="#4a4a4a"/>'
