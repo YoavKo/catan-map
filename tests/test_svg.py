@@ -656,3 +656,11 @@ class TexturesTiles(unittest.TestCase):
         code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "textures")
         self.assertEqual(code, 0)
         self.assertIn('id="tx-C"', out)
+
+
+class SeaColour(unittest.TestCase):
+    def test_the_textures_sea_is_the_colour_of_the_plain_sea(self):
+        from catan_map.tiles_plain import SEA
+        from catan_map.svg_tiles import tile_defs
+        sea = re.search(r'<symbol id="sea".*?</symbol>', tile_defs("textures"), re.S).group(0)
+        self.assertIn(f'fill="{SEA}"', sea)

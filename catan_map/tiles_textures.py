@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from .board import RESOURCE_NAMES
 from .tiles_common import HEX_POINTS, TileSet, symbol
+from .tiles_plain import SEA as SEA_GROUND   # the sea is the colour of the "plain" set's sea
 
 GROUND = {"W": "#3c7a45", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#9aa4ae", "D": "#f1e2b6"}
-SEA_GROUND = "#bfe0f5"     # the sea is one flat colour
 SCALE = 1.8                # the patterns are drawn this much larger than their drawings below: fewer, bigger lines
 
 # (width, height, drawing) of one repeat of each pattern; the lines are drawn over the ground colour of the tile.
