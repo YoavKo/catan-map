@@ -65,7 +65,7 @@ class RenderSvg(unittest.TestCase):
 
     def test_the_sets_look_different_and_the_default_is_realistic(self):
         texts = {name: render_svg(self.board, tiles=name) for name in TILE_SET_NAMES}
-        self.assertEqual(len(set(texts.values())), 3)
+        self.assertEqual(len(set(texts.values())), 4)
         self.assertEqual(render_svg(self.board), texts["realistic"])
         self.assertLess(len(texts["plain"]), len(texts["basic"]))
 
@@ -599,3 +599,39 @@ class GoldFrame(unittest.TestCase):
         path = frame.find("s:path", NS).get("d")
         self.assertIn("M5,5V595H595V5Z", path)                                    # the inner edge: 5 mm from every side
         self.assertNotIn('id="frame"', render_svg(generate("KMQXRT")))
+
+
+class IllustratedTiles(unittest.TestCase):
+    def test_the_tiles_are_pictures_with_their_own_border(self):
+        svg = render_svg(generate("KMQXRT"), tiles="illustrated")
+        root = ET.fromstring(svg)
+        symbols = [s for s in root.iter("{http://www.w3.org/2000/svg}symbol") if s.get("id", "").startswith("tile-")]
+        self.assertEqual(len(symbols), 6)
+        for symbol in symbols:
+            image = symbol.find("s:image", NS)
+            self.assertTrue(image.get("href").startswith("data:image/webp;base64,"))
+            self.assertAlmostEqual(float(image.get("width")), 173.2, places=1)         # as wide as a hexagon, and 200 high
+        edges = next(g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("id") == "edges")
+        self.assertEqual(len(edges), 0)                                               # no border is drawn round them
+
+    def test_it_is_a_tile_set_of_the_command_line(self):
+        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "illustrated")
+        self.assertEqual(code, 0)
+        self.assertIn("data:image/webp;base64", out)
+
+
+class BankPictures(unittest.TestCase):
+    def test_with_the_illustrated_tiles_each_slot_has_its_tile_as_a_background(self):
+        root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",), tiles="illustrated"))
+        slots = [g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("class") == "slot"]
+        self.assertEqual(len(slots), 6)
+        for slot in slots[:5]:
+            kind = slot.get("data-kind")
+            self.assertEqual(slot.find(".//s:use", NS).get("href"), f"#tile-{kind}")      # under the icon, which is drawn after it
+        self.assertIsNone(slots[5].find(".//s:use", NS))                                  # the development cards keep their plain slot
+
+    def test_the_other_tile_sets_have_the_same_pictures_in_their_slots(self):
+        for name in ("realistic", "basic", "plain"):
+            svg = render_svg(generate("KMQXRT"), elements=("bank",), tiles=name)
+            self.assertEqual(svg.count("bank-clip-"), 10, name)                           # five clips, each used once
+            self.assertEqual(svg.count("data:image/webp;base64"), 5, name)               # the five pictures, in the slots

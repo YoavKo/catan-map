@@ -15,3 +15,6 @@ catan-map = "catan_map.cli:main"
 
 [tool.setuptools]
 packages = ["catan_map"]
+
+[tool.setuptools.package-data]
+catan_map = ["assets/illustrated/*.webp"]

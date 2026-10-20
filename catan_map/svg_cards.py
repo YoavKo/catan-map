@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from .codec import CatanMapError
 from .svg_tiles import RING_COLOR, bare_icon, get_tile_set, resource_icon
+from .tiles_common import HALF_WIDTH, RADIUS
 
 CARD_WIDTH = 120
 CARD_HEIGHT = 72
@@ -102,6 +103,33 @@ SLOT_W, SLOT_H = 54.44, 85    # mm: the bridge size (57 x 89) shortened to 85 mm
 DEV_BLUE = "#27407a"
 
 
+# The part of a tile picture (in its own units: 173.2 x 200, centred on 0) that fills a bank slot:
+# the middle of the hexagon, which has no corner and no border in it.
+SLOT_PICTURE_SCALE = 0.6223
+
+
+def _slot_picture(kind, x, top, own_picture):
+    """The tile picture of this resource (the illustrated tile set's) as the background of the slot at (x, top): the
+    middle of the tile, cut to the slot's rounded rectangle, under a light veil so that the icon on it can be seen.
+    `own_picture` is true when the tile set is the illustrated one, which already has the picture in its tile symbol."""
+    if own_picture:
+        picture = f'<use href="#tile-{kind}" transform="translate({x + SLOT_W / 2:.2f} {top + SLOT_H / 2:.2f}) scale({SLOT_PICTURE_SCALE})"/>'
+    else:
+        from .tiles_illustrated import picture_uri
+        picture = (
+            f'<image x="{-HALF_WIDTH * SLOT_PICTURE_SCALE:.3f}" y="{-RADIUS * SLOT_PICTURE_SCALE:.3f}" width="{2 * HALF_WIDTH * SLOT_PICTURE_SCALE:.3f}" '
+            f'height="{2 * RADIUS * SLOT_PICTURE_SCALE:.3f}" preserveAspectRatio="none" href="{picture_uri(kind)}" '
+            f'transform="translate({x + SLOT_W / 2:.2f} {top + SLOT_H / 2:.2f})"/>'
+        )
+    clip = f"bank-clip-{kind}"
+    cx, cy = x + SLOT_W / 2, top + SLOT_H / 2
+    return (
+        f'<clipPath id="{clip}"><rect x="{x:.2f}" y="{top:.2f}" width="{SLOT_W}" height="{SLOT_H}" rx="3.5"/></clipPath>'
+        f'<g clip-path="url(#{clip})">{picture}'
+        f'<rect x="{x:.2f}" y="{top:.2f}" width="{SLOT_W}" height="{SLOT_H}" fill="#ffffff" opacity="0.22"/></g>'
+    )
+
+
 def bank_group(tiles=None, icons=None):
     """Places for the bank: a slot for each resource and one for the development cards, in a
     strip along the bottom of the mat. A slot is only an outline, in the colour of the resource,
@@ -120,6 +148,7 @@ def bank_group(tiles=None, icons=None):
         ring = RING_COLOR.get(kind, tile_set.ground[kind])
         parts.append(
             f'<g class="slot" data-kind="{kind}">'
+            f'{_slot_picture(kind, x, top, tile_set.own_edges)}'
             f'<rect x="{x:.2f}" y="{top:.2f}" width="{SLOT_W}" height="{SLOT_H}" rx="3.5" fill="none" stroke="{ring}" stroke-width="1.8"/>'
             f'{bare_icon(kind, round(x + SLOT_W / 2, 2), round(top + SLOT_H / 2, 2), icon, icons)}'
             f'</g>'

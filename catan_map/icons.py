@@ -181,7 +181,7 @@ def _detailed_wheat():
 
 def _detailed_bricks():
     rows = ((-9, (-11, 0, 11)), (-1, (-16.5, -5.5, 5.5, 16.5)), (7, (-11, 0, 11)))
-    parts = ['<rect x="-12.2" y="-10.2" width="24.4" height="21" rx="1" fill="#e9c3aa"/>']
+    parts = []
     shades = ("#cf7455", "#c4634a", "#d98262")
     n = 0
     for y, xs in rows:
@@ -272,8 +272,7 @@ def _realistic_wheat():
 def _realistic_bricks():
     rng = random.Random("icon-bricks")
     parts = ['<defs><linearGradient id="ic-brick" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e48b6c"/><stop offset="1" stop-color="#b9523a"/></linearGradient></defs>',
-             '<ellipse cx="0.5" cy="11.6" rx="13" ry="1.8" fill="#000" opacity="0.25"/>',
-             '<rect x="-12.4" y="-10.4" width="24.8" height="21.2" rx="1.2" fill="#d9b69d"/>']
+             '<ellipse cx="0.5" cy="11.6" rx="13" ry="1.8" fill="#000" opacity="0.25"/>']
     for y, xs in ((-9, (-11, 0, 11)), (-1, (-16.5, -5.5, 5.5, 16.5)), (7, (-11, 0, 11))):
         for cx in xs:
             x0, x1 = max(cx - 5.3, -12.2), min(cx + 5.3, 12.2)

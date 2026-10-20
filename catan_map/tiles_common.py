@@ -29,6 +29,7 @@ class TileSet:
     ground: Dict[str, str]       # the main colour of each tile, W S G C O D (the ring of a port badge)
     token_fill: str = "#f6f0dc"  # the face of a number token
     shadows: bool = False        # whether tokens and port badges cast a small shadow
+    own_edges: bool = False      # the tiles are pictures that carry their own border: no border is drawn round them
 
 
 # The art of a tile stops where its border starts: the hexagon shrunk by half the border width.

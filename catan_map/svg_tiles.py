@@ -7,14 +7,15 @@ the sea (``sea``) and the pier (``dock``), which a board drawing places with ``<
 """
 from __future__ import annotations
 
-from . import tiles_basic, tiles_plain, tiles_realistic
+from . import tiles_basic, tiles_illustrated, tiles_plain, tiles_realistic
 from .codec import CatanMapError
 from .icons import DEFAULT_ICON_SET, ICON_DEFS, ICON_SETS, check_icon_set
 from .tiles_common import BORDER, BORDER_WIDTH, HALF_WIDTH, HEX_POINTS, OUTLINE, RADIUS, TileSet, edge_symbols
 
 __all__ = ["DEFAULT_TILE_SET", "TILE_SET_NAMES", "get_tile_set", "tile_defs", "port_group", "preview_svg", "resource_icon", "bare_icon"]
 
-_BUILDERS = {"basic": tiles_basic.build, "realistic": tiles_realistic.build, "plain": tiles_plain.build}
+_BUILDERS = {"basic": tiles_basic.build, "realistic": tiles_realistic.build, "plain": tiles_plain.build,
+             "illustrated": tiles_illustrated.build}
 TILE_SET_NAMES = tuple(_BUILDERS)
 DEFAULT_TILE_SET = "realistic"
 _cache = {}

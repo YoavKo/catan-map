@@ -271,8 +271,9 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
     land, dark, light, tokens, desert_logos = [], [], [], [], []
     for tile in range(TILE_COUNT):
         x, y = _center(*TILE_POSITIONS[tile])
-        dark.append(f'<use href="#edge-dark" x="{_num(x)}" y="{_num(y)}"/>')
-        light.append(f'<use href="#edge-light" x="{_num(x)}" y="{_num(y)}"/>')
+        if not tile_set.own_edges:
+            dark.append(f'<use href="#edge-dark" x="{_num(x)}" y="{_num(y)}"/>')
+            light.append(f'<use href="#edge-light" x="{_num(x)}" y="{_num(y)}"/>')
         land.append(f'<use href="#tile-{board.tiles[tile]}" x="{_num(x)}" y="{_num(y)}"/>')
         if board.tokens[tile] is not None:
             tokens.append(_token(board.tokens[tile], x, y, tile_set, token_scale))
