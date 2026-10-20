@@ -331,12 +331,7 @@ def _ore(rng):
             (62, 50, 42, 60), (-62, 58, 40, 56), (6, 84, 38, 50), (38, 12, 30, 38),
         )
     )
-    scree = "".join(
-        _rock(x, y, 4.5 * _perspective(y) * (0.7 + rng() * 0.8), 3.4 * _perspective(y) * (0.7 + rng() * 0.8), rng,
-              "#b9c3cc", "#838e99", "#4f5862", glint=_pick(rng, (None, None, "#e8c35a", "#9fc6e8")))
-        for x, y in _scatter(rng, 40, 10, margin=-4)
-    )
-    return _blotches(rng, 26, ("#7d8791", "#aab4be", "#69737d"), (6, 16), 0.35) + peaks + scree
+    return _blotches(rng, 26, ("#7d8791", "#aab4be", "#69737d"), (6, 16), 0.35) + peaks
 
 
 def _saguaro(x, y, s):
