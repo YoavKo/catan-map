@@ -34,6 +34,7 @@ MARGIN = 24
 CAPTION_LINE = 34
 BACKGROUND = "#f7f3e3"
 TOKEN_RADIUS = 31
+DESERT_LOGO_TOKENS = 2.4      # the logo in the desert is this many tokens across (the tile is 173 units wide)
 # The number on a token: large, on a token that keeps its size. The pips sit under it.
 DIGIT_SIZE = 35         # one digit (2 to 9)
 DIGIT_SIZE_WIDE = 29    # 10, 11, 12
@@ -184,7 +185,7 @@ def _mat_card(corner, turn, tile_set, lang=None, icons=None):
     )
 
 
-def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=None, icons=None):
+def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=None, icons=None, desert_logo=None):
     """The board as an SVG document (text). `caption` is the seed code and the string (or just
     the string); `tiles` is the name of the tile set ("basic", "realistic" or "plain"; the
     default if None).
@@ -231,7 +232,7 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
         else:
             sea.append(f'<use href="#sea" x="{_num(x)}" y="{_num(y)}"/>')
 
-    land, dark, light, tokens = [], [], [], []
+    land, dark, light, tokens, desert_logos = [], [], [], [], []
     for tile in range(TILE_COUNT):
         x, y = _center(*TILE_POSITIONS[tile])
         dark.append(f'<use href="#edge-dark" x="{_num(x)}" y="{_num(y)}"/>')
@@ -239,11 +240,18 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
         land.append(f'<use href="#tile-{board.tiles[tile]}" x="{_num(x)}" y="{_num(y)}"/>')
         if board.tokens[tile] is not None:
             tokens.append(_token(board.tokens[tile], x, y, tile_set, token_scale))
+        elif desert_logo and board.tiles[tile] == "D":
+            side = DESERT_LOGO_TOKENS * 2 * TOKEN_RADIUS * token_scale   # a few tokens across: nearly the width of the tile
+            desert_logos.append(
+                f'<image x="{_num(x - side / 2)}" y="{_num(y - side / 2)}" width="{_num(side)}" height="{_num(side)}" '
+                f'preserveAspectRatio="xMidYMid meet" href="{desert_logo}"/>'
+            )
     drawing = (
         f'<g id="water">{"".join(sea)}</g>'
         f'<g id="edges">{"".join(dark)}{"".join(light)}</g>'
         f'<g id="land">{"".join(land)}</g>'
         f'<g id="tokens">{"".join(tokens)}</g>'
+        + (f'<g id="desert-logo">{"".join(desert_logos)}</g>' if desert_logos else "")
     )
     description = " | ".join(caption) if caption else "A Settlers of Catan board"
     head = f'<title>Catan board</title><desc>{escape(description)}</desc>{tile_defs(tile_set.name, icons)}'

@@ -383,6 +383,54 @@ class FitLogo(unittest.TestCase):
         self.assertAlmostEqual(with_logo(100, 250), 0.4, places=2)
 
 
+class DesertLogo(unittest.TestCase):
+    URI = "data:image/png;base64,iVBORw0KGgo="
+
+    def setUp(self):
+        self.board = generate("KMQXRT")             # the desert is in the middle
+
+    def images(self, **options):
+        root = ET.fromstring(render_svg(self.board, **options))
+        group = next((g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("id") == "desert-logo"), None)
+        return [] if group is None else group.findall("s:image", NS)
+
+    def test_none_without_a_logo(self):
+        self.assertEqual(self.images(), [])
+
+    def test_the_logo_is_in_the_middle_of_the_desert_as_big_as_most_of_the_tile(self):
+        (image,) = self.images(desert_logo=self.URI)
+        x, y, w, h = (float(image.get(k)) for k in ("x", "y", "width", "height"))
+        self.assertAlmostEqual(x + w / 2, 0, places=1)                     # the desert is the centre tile: (0, 300) in the board's units
+        self.assertAlmostEqual(y + h / 2, 300, places=1)
+        self.assertAlmostEqual(w, 62 * 2.4, places=1)                      # 2.4 tokens across (a token is 62 units, the tile 173)
+        self.assertEqual(image.get("href"), self.URI)
+
+    def test_on_the_sheet_it_is_60_mm(self):
+        root = ET.fromstring(render_svg(self.board, elements=(), desert_logo=self.URI))
+        board = next(g for g in root.findall("s:g", NS) if g.find("s:g", NS) is not None and g.find("s:g", NS).get("id") == "water")
+        scale = float(re.search(r"scale\(([\d.]+)\)", board.get("transform")).group(1))
+        image = next(i for i in root.iter("{http://www.w3.org/2000/svg}image"))
+        self.assertAlmostEqual(float(image.get("width")) * scale, 60, delta=0.1)
+
+    def test_it_follows_the_desert_wherever_it_is(self):
+        board = generate("KMQXRT", desert="edge")
+        root = ET.fromstring(render_svg(board, desert_logo=self.URI))
+        group = next(g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("id") == "desert-logo")
+        (image,) = group.findall("s:image", NS)
+        self.assertNotAlmostEqual(float(image.get("x")) + 31, 0, places=0)  # not in the middle any more
+
+    def test_the_command_line(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "logo.png")
+            with open(path, "wb") as handle:
+                handle.write(bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63fcffff3f0005fe02fea7d6c5f50000000049454e44ae426082"))
+            code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--desert-logo", path)
+            self.assertEqual(code, 0)
+            self.assertIn('<g id="desert-logo"><image', out)
+        self.assertEqual(run("--seed", "KMQXRT", "--desert-logo", "x.png")[0], 2)           # needs --svg
+        self.assertEqual(run("--seed", "KMQXRT", "--svg", "-", "--desert-logo", "/nonexistent.png")[0], 2)
+
+
 class Bank(unittest.TestCase):
     def setUp(self):
         self.board = generate("KMQXRT", ports=True)

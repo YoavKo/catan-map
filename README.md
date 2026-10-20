@@ -94,6 +94,7 @@ The flag letters are unique, so their **order does not matter** when reading; a 
 | `--color` | colours in the drawing |
 | `--elements [NAMES]` | make the SVG a printable 60 x 60 cm sheet (the board 550 x 505 mm, the number tokens 25 mm across) with these things on it, separated by spaces or commas: `costs` (a Building Costs card in each corner), `bank` (places for the bank along the bottom; the island moves up), `seed` (the seed code, big), `str` (the string, on one line), `logo` (the `--logo-img` image, as large as fits). `all` means all of them; no names means the bare sheet. Needs `--svg` |
 | `--logo-img FILE` | the image (png, jpg, gif, webp or svg) for the `logo` element, embedded in the SVG. Needs `--svg` and `--elements` with `logo` |
+| `--desert-logo FILE` | an image (png, jpg, gif, webp or svg) for the middle of the desert tile, the size of a number token (25 mm on a sheet), embedded in the SVG. Needs `--svg` |
 | `--icons simple\|detailed\|realistic` | the small resource icons (ports, cost cards, bank); realistic is the default. Needs `--svg` |
 | `--lang he\|en` | the language of the Building Costs cards: Hebrew (default) or English. Needs `--svg` |
 | `--tiles basic\|realistic\|plain` | the look of the tiles in the SVG: `basic` (flat colours, simple shapes), `realistic` (painted-looking, the default) or `plain` (one colour per tile). Needs `--svg` |

@@ -80,6 +80,11 @@ def build_parser():
         "(needs --svg and --elements with logo)",
     )
     parser.add_argument(
+        "--desert-logo", metavar="FILE",
+        help="an image (png, jpg, gif, webp or svg) to put in the middle of the desert, as big as a number "
+        "token. Needs --svg",
+    )
+    parser.add_argument(
         "--lang", choices=LANGUAGES, metavar="|".join(LANGUAGES),
         help=f"the language of the words on the sheet, the Building Costs cards: he (Hebrew) or en (English); "
         f"default {DEFAULT_LANGUAGE}. Needs --svg",
@@ -151,7 +156,7 @@ def _elements(args):
 def run(args):
     fmt = FORMATS[args.format]
     pipes = not args.no_pipes
-    for flag, given in (("--tiles", args.tiles is not None), ("--lang", args.lang is not None), ("--icons", args.icons is not None), ("--elements", args.elements is not None),
+    for flag, given in (("--tiles", args.tiles is not None), ("--lang", args.lang is not None), ("--desert-logo", args.desert_logo is not None), ("--icons", args.icons is not None), ("--elements", args.elements is not None),
                         ("--logo-img", args.logo_img is not None)):
         if given and args.svg is None:
             raise CatanMapError(f"{flag} only applies together with --svg")
@@ -174,14 +179,15 @@ def run(args):
         lines.append("")
         lines.append(render_board(board, ascii_only=ascii_only, color=args.color))
     logo = logo_data_uri(args.logo_img) if args.logo_img is not None else None
+    desert_logo = logo_data_uri(args.desert_logo) if args.desert_logo is not None else None
     if args.svg == "-":
         print("\n".join(lines), file=sys.stderr)
-        print(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons), end="")
+        print(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons, desert_logo), end="")
         return 0
     if args.svg is not None:
         try:
             with open(args.svg, "w", encoding="utf-8") as handle:
-                handle.write(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons))
+                handle.write(render_svg(board, caption, args.tiles, elements, logo, args.lang, args.icons, desert_logo))
         except OSError as error:
             raise CatanMapError(f"cannot write {args.svg}: {error.strerror or error}") from error
         lines.append(f"svg:    {args.svg}")
