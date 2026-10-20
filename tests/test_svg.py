@@ -648,10 +648,10 @@ class TexturesTiles(unittest.TestCase):
             self.assertIn(f'fill="url(#tx-{letter})"', svg)
         self.assertNotIn("tx-D", svg)
 
-    def test_the_brick_tile_has_a_wall_and_the_ore_tile_has_circles(self):
+    def test_the_brick_tile_has_a_wall_and_the_ore_tile_has_rocks(self):
         from catan_map.tiles_textures import _PATTERNS
         self.assertIn("H40", _PATTERNS["C"][2])                        # courses of bricks
-        self.assertGreaterEqual(_PATTERNS["O"][2].count("<circle"), 5)  # round stones
+        self.assertGreaterEqual(_PATTERNS["O"][2].count("<polygon"), 12)  # piles of rocks, the shape of the ore icon
 
     def test_it_is_a_tile_set_of_the_command_line(self):
         code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "textures")

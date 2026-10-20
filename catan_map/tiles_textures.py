@@ -1,14 +1,17 @@
 """The "textures" tile set: each tile is filled with a pattern of lines or shapes, so that the tiles can be told apart
 when the sheet is printed in grey: trees for wood, dots for sheep, diagonal stalks for wheat, a brick wall for clay,
-round stones for ore; the desert is one flat colour, and the piers of the ports are black. No fonts and no external files."""
+piles of rocks (the shape of the ore icon) for ore; the desert is one flat colour, and the piers of the ports are black. No fonts and no external files."""
 from __future__ import annotations
 
 from .board import RESOURCE_NAMES
+from .icons import SIMPLE
 from .tiles_common import HEX_POINTS, TileSet, symbol
 from .tiles_plain import SEA as SEA_GROUND   # the sea is the colour of the "plain" set's sea
 
-GROUND = {"W": "#2b6336", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#9aa4ae", "D": "#f1e2b6"}
+GROUND = {"W": "#2b6336", "S": "#a9d77a", "G": "#f0cf55", "C": "#cf6b49", "O": "#c4cbd2", "D": "#f1e2b6"}
 SCALE = 3.6                # the patterns are drawn this much larger than their drawings below: fewer, bigger lines
+
+_ROCKS = SIMPLE["O"].split("/>", 1)[1]      # the ore icon without its shadow: three rocks with dark outlines
 
 # (width, height, drawing) of one repeat of each pattern; the lines are drawn over the ground colour of the tile.
 _PATTERNS = {
@@ -28,21 +31,21 @@ _PATTERNS = {
     # a brick wall: courses with the joints shifted by half a brick
     "C": (40, 20,
           '<path d="M0,0 H40 M0,10 H40 M0,20 H40 M0,0 V10 M20,10 V20" stroke="#f6e3d3" stroke-width="2.6" fill="none"/>'),
-    # round stones: circles of different sizes, some with a smaller circle inside
-    "O": (44, 40,
-          '<g fill="#c6cdd4" stroke="#33404c" stroke-width="2"><circle cx="11" cy="11" r="8"/><circle cx="33" cy="17" r="6"/>'
-          '<circle cx="19" cy="31" r="7"/><circle cx="40" cy="36" r="4"/><circle cx="3" cy="35" r="4"/></g>'
-          '<g fill="none" stroke="#33404c" stroke-width="1.4"><circle cx="11" cy="11" r="3.2"/><circle cx="19" cy="31" r="2.8"/></g>'),
+    # ore: the pile of rocks of the ore icon, in staggered rows
+    "O": (40, 36,
+          f'<g transform="translate(10,10)">{_ROCKS}</g>'
+          + "".join(f'<g transform="translate({x},{y})">{_ROCKS}</g>' for x in (-10, 30) for y in (-8, 28))),   # the second pile wraps round the edges
 }
 
 
+_SCALES = {"O": 2.4}       # the rocks are drawn a little smaller than the other patterns: about three piles across a tile
 BLACK_DOCK = {"plank": "#111111", "line": "#111111", "post": "#111111"}
 
 
 def _pattern(letter):
     width, height, drawing = _PATTERNS[letter]
     return (f'<pattern id="tx-{letter}" width="{width}" height="{height}" patternUnits="userSpaceOnUse" '
-            f'patternTransform="scale({SCALE})">{drawing}</pattern>')
+            f'patternTransform="scale({_SCALES.get(letter, SCALE)})">{drawing}</pattern>')
 
 
 def build():
