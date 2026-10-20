@@ -65,7 +65,7 @@ class RenderSvg(unittest.TestCase):
 
     def test_the_sets_look_different_and_the_default_is_classic(self):
         texts = {name: render_svg(self.board, tiles=name) for name in TILE_SET_NAMES}
-        self.assertEqual(len(set(texts.values())), 3)
+        self.assertEqual(len(set(texts.values())), 4)
         self.assertEqual(render_svg(self.board), texts["classic"])
         self.assertLess(len(texts["plain"]), len(texts["victory"]))
 
@@ -502,12 +502,12 @@ class CommandLine(unittest.TestCase):
 
     def test_tiles_option(self):
         outputs = {}
-        for name in ("classic", "victory", "plain"):
+        for name in ("classic", "victory", "plain", "textures"):
             code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", name)
             self.assertEqual(code, 0)
             ET.fromstring(out)
             outputs[name] = out
-        self.assertEqual(len(set(outputs.values())), 3)
+        self.assertEqual(len(set(outputs.values())), 4)
         self.assertEqual(run("--seed", "KMQXRT", "--svg", "-")[1], outputs["classic"])
 
     def test_tiles_needs_svg(self):
@@ -636,3 +636,23 @@ class BankPictures(unittest.TestCase):
             root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",), tiles=name))
             slots = [g for g in root.iter("{http://www.w3.org/2000/svg}g") if g.get("class") == "slot"]
             self.assertEqual([s.find(".//s:use", NS).get("href") for s in slots[:5]], [f"#tile-{k}" for k in "CWSGO"], name)
+
+
+class TexturesTiles(unittest.TestCase):
+    def test_every_tile_has_its_own_pattern(self):
+        svg = render_svg(generate("KMQXRT"), tiles="textures")
+        root = ET.fromstring(svg)
+        patterns = {p.get("id") for p in root.iter("{http://www.w3.org/2000/svg}pattern")}
+        self.assertEqual(patterns, {f"tx-{c}" for c in "WSGCOD"} | {"tx-sea"})
+        for letter in "WSGCOD":
+            self.assertIn(f'fill="url(#tx-{letter})"', svg)
+
+    def test_the_brick_tile_has_a_wall_and_the_ore_tile_has_circles(self):
+        from catan_map.tiles_textures import _PATTERNS
+        self.assertIn("H40", _PATTERNS["C"][2])                        # courses of bricks
+        self.assertGreaterEqual(_PATTERNS["O"][2].count("<circle"), 5)  # round stones
+
+    def test_it_is_a_tile_set_of_the_command_line(self):
+        code, out, _ = run("--seed", "KMQXRT", "--svg", "-", "--tiles", "textures")
+        self.assertEqual(code, 0)
+        self.assertIn('id="tx-C"', out)

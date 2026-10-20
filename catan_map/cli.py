@@ -97,7 +97,7 @@ def build_parser():
     parser.add_argument(
         "--tiles", choices=TILE_SET_NAMES, metavar="|".join(TILE_SET_NAMES),
         help=f"the look of the tiles in the SVG: classic (pictures of the tiles), victory "
-        f"(painted-looking) or plain (one colour per tile); default {DEFAULT_TILE_SET}. Needs --svg",
+        f"(painted-looking), textures (patterns of lines, for grey prints) or plain (one colour per tile); default {DEFAULT_TILE_SET}. Needs --svg",
     )
     parser.add_argument("--color", action="store_true", help="colours in the drawing")
     parser.add_argument("--ascii", action="store_true", help="draw with plain ASCII characters only")
