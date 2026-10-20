@@ -235,51 +235,72 @@ def _grain(rng):
     return _blotches(rng, 30, ("#f6dc72", "#c8921a"), (8, 20), 0.3) + "".join(parts)
 
 
-def _clay(rng):
-    pit_mask = lambda x, y: (x / 74) ** 2 + ((y - 10) / 62) ** 2 > 1
-    rocks = "".join(
-        _rock(x, y, 11 * _perspective(y) * (0.8 + rng() * 0.5), 8 * _perspective(y) * (0.8 + rng() * 0.5), rng,
-              "#d88a68", "#b05a3a", "#6e3320")
-        for x, y in _scatter(rng, 38, 13, margin=-4, keep=pit_mask)
+def _mound(x, y, w, h, rng):
+    """A rounded hump of red-brown rock, lit from the top left, with a few hatch lines on its shaded side."""
+    j = lambda: 0.9 + rng() * 0.2
+    d = (f"M{x - w:.1f},{y + h * 0.45:.1f} "
+         f"C{x - w * 1.02:.1f},{y - h * 0.1 * j():.1f} {x - w * 0.6:.1f},{y - h * 0.85 * j():.1f} {x - w * 0.1:.1f},{y - h * j():.1f} "
+         f"C{x + w * 0.45:.1f},{y - h * 1.05 * j():.1f} {x + w * 1.0:.1f},{y - h * 0.45:.1f} {x + w:.1f},{y + h * 0.45:.1f} "
+         f"Q{x:.1f},{y + h * 0.75:.1f} {x - w:.1f},{y + h * 0.45:.1f}Z")
+    hatch = "".join(
+        f'<path d="M{x + w * (0.05 + i * 0.22):.1f},{y - h * 0.2:.1f} l{w * 0.12:.1f},{h * 0.55:.1f}" stroke="#5a2414" stroke-width="1" opacity="0.45" fill="none"/>'
+        for i in range(4)
     )
-    grass = _tufts(rng, _scatter(rng, 90, 6, margin=-4, keep=pit_mask), ("#5c9a2c", "#8cc94a", "#3f7a22"))
+    return (
+        f'<ellipse cx="{x + w * 0.1:.1f}" cy="{y + h * 0.62:.1f}" rx="{w * 1.05:.1f}" ry="{h * 0.3:.1f}" fill="#1f3a0e" opacity="0.3"/>'
+        f'<path d="{d}" fill="url(#mound)" stroke="#6b2f1c" stroke-width="1.3" stroke-linejoin="round"/>'
+        f'<path d="M{x - w * 0.55:.1f},{y - h * 0.2:.1f} Q{x - w * 0.2:.1f},{y - h * 0.9:.1f} {x + w * 0.2:.1f},{y - h * 0.8:.1f}" '
+        f'stroke="#f0a583" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.7"/>' + hatch
+    )
+
+
+def _clay(rng):
+    mounds = (
+        '<defs><linearGradient id="mound" x1="0.2" y1="0" x2="0.7" y2="1"><stop offset="0" stop-color="#d9805c"/>'
+        '<stop offset="0.55" stop-color="#b4573a"/><stop offset="1" stop-color="#7d3a24"/></linearGradient></defs>'
+        + "".join(
+            _mound(x, y, 12 * (0.8 + rng() * 0.5), 7.5 * (0.8 + rng() * 0.5), rng)
+            for x, y in sorted(_scatter(rng, 110, 12, margin=-4, keep=lambda x, y: (x / 66) ** 2 + ((y - 8) / 58) ** 2 > 1), key=lambda p: p[1])
+        )
+    )
+    grass = _tufts(rng, _scatter(rng, 40, 8, margin=-4, keep=lambda x, y: abs(x) < 56 and abs(y + 8) < 44), ("#5c9a2c", "#8cc94a", "#3f7a22"))
     bushes = "".join(
         _circle(x, y, 6, "#2f6f2a") + _circle(x - 2, y - 2, 4, "#4f9a3c") + _circle(x - 3, y - 3, 2, "#8cc65c", 0.9)
-        for x, y in ((-46, -52), (-22, -60), (42, -56), (54, -40), (-72, 8), (34, 76), (-30, 78), (66, 40))
+        for x, y in ((-44, -52), (-26, -56), (28, -50), (44, -46), (52, -14), (40, 4), (30, 60), (-34, 62))
     )
-    pit = (
-        '<path d="M-64,10 Q-68,-28 -32,-44 Q0,-54 32,-44 Q68,-32 64,0 Q62,30 72,48 Q40,74 0,68 '
-        'Q-40,72 -68,48 Q-60,30 -64,10 Z" fill="url(#clay-pit)" stroke="#8a4a32" stroke-width="2"/>'
-    )
+    # a green shelf round the pit, then the pit itself: a swirl, wide below and narrowing up and round to the right
+    shelf = ('<path d="M-70,22 C-74,-14 -54,-46 -12,-54 C26,-60 60,-44 66,-12 C68,6 52,12 46,20 C42,30 50,40 62,46 '
+             'C70,62 40,80 0,80 C-40,80 -72,60 -76,40 Z" fill="#8fcf45" opacity="0.9"/>')
+    pit = ('<path d="M-62,22 C-66,-8 -50,-34 -14,-40 C20,-46 46,-34 52,-8 C54,6 40,10 32,16 C24,24 28,36 46,38 '
+           'C62,42 62,58 38,66 C8,76 -40,70 -60,50 C-70,40 -66,30 -62,22 Z" fill="url(#clay-pit)" stroke="#9a523a" stroke-width="1.6"/>')
     swirls = "".join(
         f'<path d="{d}" stroke="{color}" stroke-width="{w}" fill="none" stroke-linecap="round" opacity="{o}"/>'
         for d, color, w, o in (
-            ("M-44,44 Q-10,70 34,52", "#fbe3d6", 4, 0.5),
-            ("M-50,20 Q-20,36 6,24 T48,36", "#f3c8b4", 3, 0.5),
-            ("M-30,2 Q0,14 30,2", "#c9806a", 2, 0.4),
-            ("M-56,34 Q-30,50 -6,44", "#b4684f", 2.5, 0.35),
-            ("M10,60 Q40,46 56,22", "#f8d9c9", 3, 0.45),
+            ("M-44,52 Q-10,66 30,54", "#fbe3d6", 4, 0.55),
+            ("M-52,28 Q-24,44 4,34 T40,44", "#f6d2c0", 3, 0.55),
+            ("M-34,6 Q-4,20 26,8", "#c9806a", 2, 0.4),
+            ("M10,64 Q40,52 52,40", "#f8d9c9", 3, 0.5),
         )
     )
     walls = "".join(
-        f'<path d="{d}" stroke="#4a2a1c" stroke-width="{w + 3}" fill="none" stroke-linecap="round" opacity="0.5" transform="translate(1.5 3)"/>'
+        f'<path d="{d}" stroke="#3e2216" stroke-width="{w + 3}" fill="none" stroke-linecap="round" opacity="0.5" transform="translate(1.2 2.6)"/>'
         f'<path d="{d}" stroke="#6b3d2a" stroke-width="{w}" fill="none" stroke-linecap="round"/>'
-        f'<path d="{d}" stroke="#a8694a" stroke-width="{w * 0.5}" fill="none" stroke-dasharray="5 3" stroke-linecap="round"/>'
+        f'<path d="{d}" stroke="#b07650" stroke-width="{w * 0.5}" fill="none" stroke-dasharray="4 2.5" stroke-linecap="round"/>'
         for d, w in (
-            ("M-56,-22 Q-32,-52 8,-48 Q46,-44 58,-14", 8),
-            ("M-48,-10 Q-26,-38 8,-34 Q40,-30 50,-6", 6),
-            ("M34,58 Q54,42 50,20", 7),
-            ("M-66,44 Q-50,52 -36,50", 5),
+            ("M-58,6 C-62,-22 -42,-44 -8,-47 C24,-50 46,-38 52,-14", 7),
+            ("M-48,10 C-50,-12 -34,-32 -6,-35 C20,-38 38,-28 42,-10", 5.5),
+            ("M30,16 C22,26 26,38 44,42", 6),
+            ("M-66,44 C-52,54 -38,52 -30,48", 4.5),
         )
     )
     hut = (
-        '<rect x="-60" y="-1" width="15" height="12" fill="#e8dcc4" stroke="#6b3d2a" stroke-width="1.5"/>'
-        '<polygon points="-62,-1 -52.5,-8 -43,-1" fill="#8a4a32" stroke="#4a2a1c" stroke-width="1"/>'
-        '<rect x="-54" y="4" width="4" height="7" fill="#4a2a1c"/>'
-        '<rect x="-40" y="6" width="6" height="5" fill="#a07040" stroke="#5a3a1c" stroke-width="0.8"/>'
-        '<rect x="-34" y="8" width="5" height="4" fill="#b8844c" stroke="#5a3a1c" stroke-width="0.8"/>'
+        '<rect x="-72" y="-3" width="13" height="11" fill="#e8dcc4" stroke="#6b3d2a" stroke-width="1.4"/>'
+        '<polygon points="-74,-3 -65.5,-10 -57,-3" fill="#8a4a32" stroke="#4a2a1c" stroke-width="1"/>'
+        '<rect x="-67" y="2" width="3.6" height="6" fill="#4a2a1c"/>'
+        '<rect x="-54" y="6" width="5" height="4" fill="#a07040" stroke="#5a3a1c" stroke-width="0.8"/>'
     )
-    return grass + rocks + bushes + pit + swirls + walls + hut
+    pit_group = f'<g transform="translate(0 5) scale(0.9)">{pit}{swirls}{walls}{hut}</g>'
+    return grass + shelf + mounds + bushes + pit_group
 
 
 def _peak(x, base, w, h, rng):
