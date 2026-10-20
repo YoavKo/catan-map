@@ -31,6 +31,19 @@ from .tiles_common import HALF_WIDTH, OUTLINE, RADIUS
 
 ROW_STEP = RADIUS * 1.5
 MARGIN = 24
+
+# The sea is cut to a regular hexagon (flat top and bottom) through the notches of the ring of sea tiles: its top and
+# bottom edges are at the shoulders of the top and bottom sea rows, so the points of the tiles outside it are cut off.
+OUTLINE_TOP, OUTLINE_BOTTOM = -(ROW_STEP + RADIUS / 2), 5 * ROW_STEP + RADIUS / 2
+OUTLINE_HALF_HEIGHT = (OUTLINE_BOTTOM - OUTLINE_TOP) / 2
+OUTLINE_CENTER_Y = (OUTLINE_BOTTOM + OUTLINE_TOP) / 2
+OUTLINE_HALF_WIDTH = OUTLINE_HALF_HEIGHT * 2 / 3 ** 0.5       # its left and right points
+SEA_OUTLINE = " ".join(
+    f"{x:.3f},{y:.3f}" for x, y in (
+        (-OUTLINE_HALF_WIDTH / 2, OUTLINE_TOP), (OUTLINE_HALF_WIDTH / 2, OUTLINE_TOP), (OUTLINE_HALF_WIDTH, OUTLINE_CENTER_Y),
+        (OUTLINE_HALF_WIDTH / 2, OUTLINE_BOTTOM), (-OUTLINE_HALF_WIDTH / 2, OUTLINE_BOTTOM), (-OUTLINE_HALF_WIDTH, OUTLINE_CENTER_Y),
+    )
+)
 CAPTION_LINE = 34
 BACKGROUND = "#f7f3e3"
 TOKEN_RADIUS = 31
@@ -47,21 +60,22 @@ ELEMENTS = ("costs", "bank", "seed", "str", "logo")
 MAT_MM = 600
 BOARD_MM = (550, 505)     # the board (with its sea) is drawn as large as fits in this
 TOKEN_MM = 25             # the diameter of a number token
-CARD_MARGIN = 5
+FRAME = 5                 # mm: the gold frame round the sheet
+INSET = FRAME + 3         # mm: nothing but the frame is closer to the edge than this
+CARD_MARGIN = INSET
 # the seed and string above the bottom right card, right-aligned, under the logo
-STACK_RIGHT = 595       # mm
+STACK_RIGHT = MAT_MM - INSET       # mm
 STACK_WIDTH = 97        # the free width above the card: the island's sea ends 498 mm from the left
 SEED_SIZE = 24          # mm: the seed is big, to be read from across the table; a long code is written smaller to fit
 STRING_SIZE = 6.4       # mm: the size the string would be, about twice a whole string on one line over the card...
 STRING_MIN = 2.5        # ...but it is kept on one line, so it is made as large as the room allows, down to this
-SEED_BASELINE = 509     # the baseline of the seed, just above the bottom right card (when the card is there)
-SEED_BASELINE_FREE = 588    # and when there is no card
+SEED_BASELINE = 506     # the baseline of the seed, just above the bottom right card (when the card is there)
+SEED_BASELINE_FREE = 585    # and when there is no card
 SEED_GAP = 3            # mm between the string and the seed under it
 GLYPH = 0.6             # the width of a monospace character, as a fraction of its size
-BOARD_TOP_MARGIN = 3    # with the bank, the island moves up to this far from the top edge
-LOGO_BOX = (498, 415, 97, 70)       # x, y, width, height in mm: used when the shape of the logo is not known
+LOGO_BOX = (495, 415, 97, 70)       # x, y, width, height in mm: used when the shape of the logo is not known
 LOGO_GAP = 4            # mm between the logo and the island
-CARD_BOTTOM = 125       # the top right card (turned) ends here; the logo stays below it
+CARD_BOTTOM = 128       # the top right card (turned) ends here; the logo stays below it
 SEED_CAP = 0.75         # the height of the seed's capital letters, as a fraction of its size
 LOGO_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
               ".webp": "image/webp", ".svg": "image/svg+xml"}
@@ -71,6 +85,22 @@ CARD_PLACES = (("top-left", 180), ("top-right", 270), ("bottom-left", 90), ("bot
 
 def _center(row, x):
     return x * HALF_WIDTH, row * ROW_STEP
+
+
+def _frame():
+    """The gold frame round the sheet, FRAME mm wide: a brushed-gold band (a gradient with a little grain)."""
+    outer, inner = MAT_MM, MAT_MM - 2 * FRAME
+    ring = f"M0,0H{outer}V{outer}H0Z M{FRAME},{FRAME}V{FRAME + inner}H{FRAME + inner}V{FRAME}Z"
+    return (
+        '<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#e9c85a"/><stop offset="0.35" stop-color="#c79a2a"/>'
+        '<stop offset="0.6" stop-color="#f0d577"/><stop offset="1" stop-color="#b98a22"/></linearGradient>'
+        '<filter id="gold-grain" x="0" y="0" width="100%" height="100%">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.02 0.9" numOctaves="2" seed="3"/>'
+        '<feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.3  0 0 0 0 0.05  0 0 0 1.4 -0.45"/><feComposite in2="SourceGraphic" operator="in"/></filter></defs>'
+        f'<g id="frame"><path d="{ring}" fill="url(#gold)" fill-rule="evenodd"/>'
+        f'<path d="{ring}" fill-rule="evenodd" filter="url(#gold-grain)" opacity="0.35"/></g>'
+    )
 
 
 def _num(value):
@@ -221,9 +251,12 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
         port_at[position] = (port.kind, way)
 
     # the board is drawn in its own units (a tile is 200 high) and scaled for the mat
-    board_width = 14 * HALF_WIDTH
-    board_top, board_bottom = -(ROW_STEP + RADIUS), 5 * ROW_STEP + RADIUS
-    scale = min(BOARD_MM[0] / board_width, BOARD_MM[1] / (board_bottom - board_top)) if mat else 1.0
+    # (the sea is cut to one big hexagon, so the board is smaller than the ring of sea tiles; the scale is still the one
+    # that fits the ring in BOARD_MM, so the tiles and tokens keep their size)
+    ring_width = 14 * HALF_WIDTH
+    ring_top, ring_bottom = -(ROW_STEP + RADIUS), 5 * ROW_STEP + RADIUS
+    scale = min(BOARD_MM[0] / ring_width, BOARD_MM[1] / (ring_bottom - ring_top)) if mat else 1.0
+    board_top, board_bottom = OUTLINE_TOP, OUTLINE_BOTTOM
     token_scale = (TOKEN_MM / 2 / scale) / TOKEN_RADIUS if mat else 1.0
 
     sea = []
@@ -250,7 +283,8 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
                 f'preserveAspectRatio="xMidYMid meet" href="{desert_logo}"/>'
             )
     drawing = (
-        f'<g id="water">{"".join(sea)}</g>'
+        f'<clipPath id="clip-sea-outline"><polygon points="{SEA_OUTLINE}"/></clipPath>'
+        f'<g id="water" clip-path="url(#clip-sea-outline)">{"".join(sea)}</g>'
         f'<g id="edges">{"".join(dark)}{"".join(light)}</g>'
         f'<g id="land">{"".join(land)}</g>'
         f'<g id="tokens">{"".join(tokens)}</g>'
@@ -261,7 +295,9 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
 
     if mat:
         # the island is centred on the sheet, or with a bank moved up to leave room under it
-        shift = BOARD_TOP_MARGIN - board_top * scale if bank else MAT_MM / 2 - (board_top + board_bottom) / 2 * scale
+        # the island is in the middle of the free space: of the sheet, or, with the bank, of what is above the bank
+        middle = (INSET + BANK_BOX[1]) / 2 if bank else MAT_MM / 2
+        shift = middle - (board_top + board_bottom) / 2 * scale
         cards = "".join(_mat_card(corner, turn, tile_set, lang, icons) for corner, turn in CARD_PLACES) if costs else ""
         # without the cost cards the bank moves left, to the margin, to leave the corner to the logo
         bank_dx = 0 if costs else CARD_MARGIN - BANK_BOX[0]
@@ -297,12 +333,12 @@ def render_svg(board, caption=(), tiles=None, elements=None, logo=None, lang=Non
             f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {MAT_MM} {MAT_MM}" width="{MAT_MM}mm" height="{MAT_MM}mm">'
             f'{head}<rect width="{MAT_MM}" height="{MAT_MM}" fill="{BACKGROUND}"/>'
             f'<g transform="translate({MAT_MM / 2:g} {_num(shift)}) scale({scale:.5f})">{drawing}</g>'
-            f'{cards}{bank_strip}{captions}{picture}</svg>\n'
+            f'{cards}{bank_strip}{captions}{picture}{_frame()}</svg>\n'
         )
 
-    left = -(6 * HALF_WIDTH + HALF_WIDTH) - MARGIN
+    left = -OUTLINE_HALF_WIDTH - MARGIN
     top = board_top - MARGIN
-    width = 2 * (7 * HALF_WIDTH + MARGIN)
+    width = 2 * (OUTLINE_HALF_WIDTH + MARGIN)
     full_height = board_bottom - top + MARGIN   # bottom of row 5 plus margin
     height = full_height + (len(caption) * CAPTION_LINE + MARGIN if caption else 0)
 

@@ -46,9 +46,8 @@ def _sea_symbol():
     return (
         f'<symbol id="sea" overflow="visible">'
         f'<clipPath id="clip-sea"><polygon points="{HEX_POINTS}"/></clipPath>'
-        f'<polygon points="{HEX_POINTS}" fill="{SEA["ground"]}"/>'
+        f'<polygon points="{HEX_POINTS}" fill="{SEA["ground"]}" stroke="{SEA["ground"]}" stroke-width="1.5"/>'
         f'<g clip-path="url(#clip-sea)">{waves}</g>'
-        f'<polygon points="{HEX_POINTS}" fill="none" stroke="{SEA["deep"]}" stroke-width="3" stroke-linejoin="round"/>'
         f'<title>sea</title></symbol>'
     )
 

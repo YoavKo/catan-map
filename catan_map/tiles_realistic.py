@@ -373,7 +373,7 @@ def _shared_defs():
         '<radialGradient id="token-face" cx="0.38" cy="0.32" r="0.85"><stop offset="0" stop-color="#fffaea"/>'
         '<stop offset="0.75" stop-color="#f1e7c8"/><stop offset="1" stop-color="#d9c89b"/></radialGradient>'
         '<radialGradient id="sea-gradient" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse">'
-        '<stop offset="0.3" stop-color="#4aa0dc"/><stop offset="1" stop-color="#1f66a3"/></radialGradient>'
+        '<stop offset="0" stop-color="#3f95d6"/><stop offset="1" stop-color="#3a8dcf"/></radialGradient>'   # almost flat, so that the sea tiles meet without a seam
     )
 
 
@@ -408,9 +408,9 @@ def _sea():
     return (
         f'<symbol id="sea" overflow="visible">'
         f'<clipPath id="clip-sea"><polygon points="{HEX_POINTS}"/></clipPath>'
-        f'<polygon points="{HEX_POINTS}" fill="url(#sea-gradient)"/>'
-        f'<g clip-path="url(#clip-sea)">{troughs}{foam}{_OVERLAY}</g>'
-        f'<polygon points="{HEX_POINTS}" fill="none" stroke="#1a5a94" stroke-width="3" stroke-linejoin="round"/>'
+        f'<polygon points="{HEX_POINTS}" fill="url(#sea-gradient)" stroke="#3d91d2" stroke-width="1.5"/>'
+        f'<g clip-path="url(#clip-sea)">{troughs}{foam}'
+        f'<rect x="-100" y="-100" width="200" height="200" filter="url(#grain)" opacity="0.22"/></g>'      # no shade or edge line: one continuous sea
         f'<title>sea</title></symbol>'
     )
 

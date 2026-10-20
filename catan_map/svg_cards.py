@@ -96,9 +96,9 @@ def building_costs_card(tiles=None, lang=None, icons=None):
 
 # the strip along the bottom edge of the mat, between the two bottom cards: x, y, width, height (mm).
 # The island is moved up to make room for it, so that the slots are the size of a playing card.
-BANK_BOX = (84, 504, 387, 93)
+BANK_BOX = (84, 503, 372, 89)
 BANK_RESOURCES = ("C", "W", "S", "G", "O")        # brick, wood, sheep, grain, ore
-SLOT_W, SLOT_H = 57, 89        # mm: the size of a card of the bridge size (57 x 89); poker size (63.5 x 88.9) would not fit in a row
+SLOT_W, SLOT_H = 54.44, 85    # mm: the bridge size (57 x 89) shortened to 85 mm tall, same ratio; poker size (63.5 x 88.9) would not fit in a row
 DEV_BLUE = "#27407a"
 
 

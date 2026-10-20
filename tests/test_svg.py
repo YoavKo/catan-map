@@ -188,7 +188,7 @@ class Logo(unittest.TestCase):
         self.assertTrue(image.get("href").startswith("data:image/png;base64,"))
         x, y, w, h = (float(image.get(k)) for k in ("x", "y", "width", "height"))
         self.assertGreater(x, 450)                                           # at the right
-        self.assertLessEqual(x + w, 595)
+        self.assertLessEqual(x + w, 592)
         self.assertGreater(h, 60)
         self.assertEqual(root.findall("s:text", NS), [])                        # no seed or string: they were not asked for
 
@@ -349,7 +349,7 @@ class FitLogo(unittest.TestCase):
                 self.assertAlmostEqual(w / h, aspect, places=3)
                 self.assertGreaterEqual(y, CARD_BOTTOM)                       # below the top right card
                 self.assertLessEqual(y + h, 485)                              # above the seed
-                self.assertLessEqual(x + w, 595)
+                self.assertLessEqual(x + w, 592)
                 for step in range(0, 101):                                    # the island is further left at every height
                     self.assertLess(_island_edge(shift, self.SCALE, y + h * step / 100), x, (name, aspect, step))
 
@@ -361,11 +361,11 @@ class FitLogo(unittest.TestCase):
         bigger = fit_logo(1, shift, self.SCALE, 485 + 0.0)
         self.assertEqual((w, h), bigger[2:])
         # a box 1 mm taller (and wider) would not fit
-        from catan_map.render_svg import _island_edge, LOGO_GAP
+        from catan_map.render_svg import _island_edge, LOGO_GAP, CARD_BOTTOM, STACK_RIGHT
         top = 485 - (h + 1)
-        left = 595 - (w + 1)
+        left = STACK_RIGHT - (w + 1)
         worst = max(_island_edge(shift, self.SCALE, top + (h + 1) * s / 40) for s in range(41))
-        self.assertTrue(left < worst + LOGO_GAP or top < 125 + LOGO_GAP)
+        self.assertTrue(left < worst + LOGO_GAP or top < CARD_BOTTOM + LOGO_GAP)
 
     def test_the_logo_in_the_svg_follows_its_shape(self):
         import struct as _struct
@@ -451,7 +451,7 @@ class Bank(unittest.TestCase):
         root = ET.fromstring(render_svg(self.board, elements=("bank",)))
         for slot in root.findall(".//s:g[@class='slot']", NS):
             rect = slot.find("s:rect", NS)
-            self.assertEqual((float(rect.get("width")), float(rect.get("height"))), (57, 89))     # bridge size, 57 x 89 mm
+            self.assertEqual((float(rect.get("width")), float(rect.get("height"))), (54.44, 85))     # the bridge size shortened to 85 mm, same ratio
 
     def test_the_island_moves_up_to_make_room_and_the_bank_fits_under_it(self):
         from catan_map.render_svg import CARD_MARGIN, MAT_MM
@@ -465,7 +465,7 @@ class Bank(unittest.TestCase):
         without = ET.fromstring(render_svg(self.board, elements=()))
         shift = lambda root: float(re.search(r"translate\(300 ([-\d.]+)\)", next(g for g in root.findall("s:g", NS) if g.find("s:g", NS) is not None and g.find("s:g", NS).get("id") == "water").get("transform")).group(1))
         self.assertLess(shift(with_bank), shift(without))                         # moved up
-        self.assertGreaterEqual(y, shift(with_bank) + 850 * 0.45363)              # the island ends above the bank
+        self.assertGreaterEqual(y, shift(with_bank) + 800 * 0.45363)              # the island ends above the bank
         self.assertAlmostEqual(shift(without), 300 - 300 * 0.45363, delta=0.1)    # without a bank it stays centred
 
     def test_the_seed_and_string_are_under_the_logo_above_the_bottom_right_card(self):
@@ -541,9 +541,61 @@ class BankWithoutCosts(unittest.TestCase):
         with_costs = render_svg(generate("KMQXRT"), elements=("costs", "bank"))
         without = render_svg(generate("KMQXRT"), elements=("bank",))
         self.assertNotIn('<g transform="translate(', with_costs.split('<g class="bank">')[0][-40:])
-        self.assertIn('translate(-79 0)"><g class="bank">', without)
+        self.assertIn('translate(-76 0)"><g class="bank">', without)
 
     def test_the_logo_stays_clear_of_the_bank(self):
         root = self.render(("bank", "logo"))
         image = next(i for i in root.iter("{http://www.w3.org/2000/svg}image") if i.get("preserveAspectRatio") == "xMaxYMax meet")
         self.assertGreaterEqual(float(image.get("x")), 5 + 387 + 4)             # right of the bank strip (it ends at 392 mm)
+
+
+class OneBigHexagon(unittest.TestCase):
+    def test_the_sea_is_cut_to_a_regular_hexagon(self):
+        root = ET.fromstring(render_svg(generate("KMQXRT")))
+        svg = "{http://www.w3.org/2000/svg}"
+        water = next(g for g in root.iter(svg + "g") if g.get("id") == "water")
+        self.assertEqual(water.get("clip-path"), "url(#clip-sea-outline)")
+        clip = next(c for c in root.iter(svg + "clipPath") if c.get("id") == "clip-sea-outline")
+        points = [tuple(float(v) for v in p.split(",")) for p in clip.find("s:polygon", NS).get("points").split()]
+        self.assertEqual(len(points), 6)
+        side = [((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5 for (x1, y1), (x2, y2) in zip(points, points[1:] + points[:1])]
+        self.assertAlmostEqual(max(side), min(side), places=2)                      # regular
+        self.assertAlmostEqual(min(p[1] for p in points), -200, places=1)           # the shoulders of the top and bottom sea rows
+        self.assertAlmostEqual(max(p[1] for p in points), 800, places=1)
+
+    def test_the_picture_is_smaller_by_the_cut_points(self):
+        view = ET.fromstring(render_svg(generate("KMQXRT"))).get("viewBox").split()
+        self.assertAlmostEqual(float(view[3]), 1000 + 2 * 24, places=1)             # was 1100 + the margins
+
+
+class SeaAndFrame(unittest.TestCase):
+    def test_the_sea_tiles_have_no_dark_edge(self):
+        from catan_map.svg_tiles import TILE_SET_NAMES, tile_defs
+        for name in TILE_SET_NAMES:
+            sea = re.search(r'<symbol id="sea".*?</symbol>', tile_defs(name), re.S).group(0)
+            for stroke in re.findall(r'stroke="(#[0-9a-f]{6})" stroke-width="3"', sea):
+                self.assertNotIn(stroke, ("#1a5a94", "#2b76b5"))               # the dark blue edge is gone
+
+    def test_nothing_is_closer_to_the_edge_than_the_frame(self):
+        from catan_map.render_svg import FRAME, INSET, MAT_MM
+        from catan_map.svg_cards import BANK_BOX
+        self.assertEqual(BANK_BOX[1] + BANK_BOX[3], MAT_MM - INSET)
+        self.assertEqual((FRAME, INSET), (5, 8))                                   # a 5 mm frame, and 3 mm of space inside it
+
+    def test_the_island_is_in_the_middle_of_what_is_above_the_bank(self):
+        from catan_map.render_svg import INSET as FRAME
+        from catan_map.svg_cards import BANK_BOX
+        root = ET.fromstring(render_svg(generate("KMQXRT"), elements=("bank",)))
+        board = next(g for g in root.findall("s:g", NS) if g.find("s:g", NS) is not None and g.find("s:g", NS).get("id") == "water")
+        shift, scale = (float(v) for v in re.search(r"translate\(300 ([-\d.]+)\) scale\(([\d.]+)\)", board.get("transform")).groups())
+        top, bottom = shift - 200 * scale, shift + 800 * scale
+        self.assertAlmostEqual(top - FRAME, BANK_BOX[1] - bottom, delta=0.5)      # as far from the top frame as from the bank
+
+
+class GoldFrame(unittest.TestCase):
+    def test_a_sheet_has_a_gold_frame_5_mm_wide_and_a_screen_image_has_none(self):
+        sheet = ET.fromstring(render_svg(generate("KMQXRT"), elements=()))
+        frame = next(g for g in sheet.iter("{http://www.w3.org/2000/svg}g") if g.get("id") == "frame")
+        path = frame.find("s:path", NS).get("d")
+        self.assertIn("M5,5V595H595V5Z", path)                                    # the inner edge: 5 mm from every side
+        self.assertNotIn('id="frame"', render_svg(generate("KMQXRT")))

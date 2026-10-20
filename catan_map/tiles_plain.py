@@ -11,7 +11,6 @@ SEA = "#3b8fd0"
 def build():
     symbols = tuple(symbol(letter, RESOURCE_NAMES.get(letter, "desert"), GROUND[letter]) for letter in "WSGCOD")
     sea = (
-        f'<symbol id="sea" overflow="visible"><polygon points="{HEX_POINTS}" fill="{SEA}" stroke="#2b76b5" '
-        f'stroke-width="3" stroke-linejoin="round"/><title>sea</title></symbol>'
+        f'<symbol id="sea" overflow="visible"><polygon points="{HEX_POINTS}" fill="{SEA}" stroke="{SEA}" stroke-width="1.5"/><title>sea</title></symbol>'
     )
     return TileSet("plain", "one flat colour per tile", symbols, sea, "", dict(GROUND))
