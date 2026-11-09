@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+from .analysis import analyze
 from .codec import Board, CatanMapError, parse, serialize
 from .generator import generate
 from .seed import SeedCode, combine, parse_seed_code, random_seed
@@ -18,6 +19,11 @@ class Made:
     code: Optional[SeedCode]        # the seed code, or None when the board was read from a string
     text: str                       # the board as a string, in the format asked for
     warnings: Tuple[str, ...]       # things that are allowed but odd (touching 6 and 8, an unusual mix...)
+
+    @property
+    def analysis(self):
+        """The balance analysis of the board (see analysis.py); computed on request, never part of making the board."""
+        return analyze(self.board)
 
     @property
     def caption(self):

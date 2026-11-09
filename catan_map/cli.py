@@ -19,6 +19,7 @@ if __name__ == "__main__" and not __package__:
     raise SystemExit
 
 import argparse  # noqa: E402
+import json  # noqa: E402
 
 from .board import DESERT_ZONES
 from .api import FORMATS, make
@@ -61,6 +62,7 @@ def build_parser():
         "ports when reading a string that has none (a string that has ports always keeps them)",
     )
     parser.add_argument("--board", action="store_true", help="draw the board in the console")
+    parser.add_argument("--analyze", action="store_true", help="print the balance analysis of the board as JSON")
     parser.add_argument(
         "--svg", metavar="FILE",
         help="write the board as an SVG image to FILE ('-' prints the SVG to the terminal, and the "
@@ -173,6 +175,8 @@ def run(args):
     for warning in made.warnings:
         print(f"warning: {warning}", file=sys.stderr)
     caption = list(made.caption)
+    if args.analyze:
+        lines.append("analysis: " + json.dumps(made.analysis, ensure_ascii=False))
 
     if args.board:
         ascii_only = args.ascii or not _can_print_arrows()
